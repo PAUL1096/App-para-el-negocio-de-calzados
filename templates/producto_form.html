@@ -1,0 +1,221 @@
+{% extends "base.html" %}
+
+{% block title %}{% if producto %}Editar{% else %}Nuevo{% endif %} Producto - Sistema de Ventas{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-5">
+                <i class="bi bi-{% if producto %}pencil{% else %}plus-circle{% endif %}"></i>
+                {% if producto %}Editar{% else %}Nuevo{% endif %} Producto
+            </h1>
+            <p class="text-muted">
+                {% if producto %}
+                    Modificar información del producto código {{ producto.codigo_calzado }}
+                {% else %}
+                    Agregar un nuevo producto al catálogo
+                {% endif %}
+            </p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <form id="formProducto">
+                        {% if producto %}
+                        <input type="hidden" id="codigo_calzado" value="{{ producto.codigo_calzado }}">
+                        <input type="hidden" id="accion" value="editar">
+                        <div class="mb-3">
+                            <label class="form-label">Código de Producto</label>
+                            <input type="text" class="form-control" value="{{ producto.codigo_calzado }}" readonly>
+                        </div>
+                        {% else %}
+                        <input type="hidden" id="accion" value="nuevo">
+                        <div class="alert alert-info">
+                            <i class="bi bi-info-circle"></i> El código se asignará automáticamente
+                        </div>
+                        {% endif %}
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="tipo" class="form-label">Tipo de Calzado *</label>
+                                <input type="text" class="form-control" id="tipo"
+                                       value="{% if producto %}{{ producto.tipo }}{% endif %}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="cuero" class="form-label">Tipo de Cuero *</label>
+                                <input type="text" class="form-control" id="cuero"
+                                       value="{% if producto %}{{ producto.cuero }}{% endif %}" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="color" class="form-label">Color *</label>
+                                <input type="text" class="form-control" id="color"
+                                       value="{% if producto %}{{ producto.color }}{% endif %}" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="serie_tallas" class="form-label">Serie de Tallas *</label>
+                                <input type="text" class="form-control" id="serie_tallas"
+                                       value="{% if producto %}{{ producto.serie_tallas }}{% endif %}"
+                                       placeholder="Ej: 36-42" required>
+                            </div>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="costo_unitario" class="form-label">Costo Unitario *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="costo_unitario"
+                                           value="{% if producto %}{{ producto.costo_unitario }}{% endif %}"
+                                           step="0.01" min="0" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="precio_sugerido" class="form-label">Precio Sugerido *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="precio_sugerido"
+                                           value="{% if producto %}{{ producto.precio_sugerido }}{% endif %}"
+                                           step="0.01" min="0" required>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Margen de Ganancia</label>
+                            <div class="input-group input-group-lg">
+                                <input type="text" class="form-control fw-bold" id="margen_calculado" readonly>
+                                <span class="input-group-text">%</span>
+                            </div>
+                            <small class="text-muted">Se calcula automáticamente</small>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="observaciones" class="form-label">Observaciones</label>
+                            <textarea class="form-control" id="observaciones" rows="3">{% if producto %}{{ producto.observaciones }}{% endif %}</textarea>
+                        </div>
+
+                        <hr class="my-4">
+
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="/productos" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Guardar Producto
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-info-circle"></i> Información</h5>
+                    <p class="card-text">
+                        <strong>Campos requeridos:</strong> Están marcados con asterisco (*).
+                    </p>
+                    <hr>
+                    <p class="card-text">
+                        <strong>Margen de ganancia:</strong> Se calcula automáticamente como:
+                        <code>(Precio - Costo) / Costo × 100</code>
+                    </p>
+                    <hr>
+                    <p class="card-text">
+                        <strong>Serie de tallas:</strong> Indique el rango de tallas disponibles (ej: 36-42, 38-45).
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const formProducto = document.getElementById('formProducto');
+    const costoInput = document.getElementById('costo_unitario');
+    const precioInput = document.getElementById('precio_sugerido');
+    const margenInput = document.getElementById('margen_calculado');
+
+    // Calcular margen automáticamente
+    function calcularMargen() {
+        const costo = parseFloat(costoInput.value) || 0;
+        const precio = parseFloat(precioInput.value) || 0;
+
+        if (costo > 0) {
+            const margen = ((precio - costo) / costo * 100);
+            margenInput.value = margen.toFixed(2);
+
+            // Cambiar color según el margen
+            if (margen > 50) {
+                margenInput.className = 'form-control fw-bold text-success';
+            } else if (margen > 30) {
+                margenInput.className = 'form-control fw-bold text-info';
+            } else {
+                margenInput.className = 'form-control fw-bold text-warning';
+            }
+        } else {
+            margenInput.value = '0.00';
+        }
+    }
+
+    costoInput.addEventListener('input', calcularMargen);
+    precioInput.addEventListener('input', calcularMargen);
+
+    // Calcular margen inicial si hay valores
+    calcularMargen();
+
+    // Enviar formulario
+    formProducto.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const accion = document.getElementById('accion').value;
+        const data = {
+            accion: accion,
+            tipo: document.getElementById('tipo').value,
+            cuero: document.getElementById('cuero').value,
+            color: document.getElementById('color').value,
+            serie_tallas: document.getElementById('serie_tallas').value,
+            costo_unitario: parseFloat(costoInput.value),
+            precio_sugerido: parseFloat(precioInput.value),
+            observaciones: document.getElementById('observaciones').value
+        };
+
+        if (accion === 'editar') {
+            data.codigo_calzado = parseInt(document.getElementById('codigo_calzado').value);
+        }
+
+        try {
+            const response = await fetch('/api/productos/guardar', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert(result.message);
+                window.location.href = '/productos';
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error al guardar producto: ' + error);
+        }
+    });
+});
+</script>
+{% endblock %}

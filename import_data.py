@@ -107,5 +107,5 @@ def importar_datos_excel(archivo_excel, db_name='ventas_calzado.db'):
 
 if __name__ == '__main__':
     # Ejecutar importación
-    archivo = '/mnt/user-data/uploads/datos_simulados_calzado.xlsx'
+    archivo = 'datos_simulados_calzado.xlsx'
     importar_datos_excel(archivo)

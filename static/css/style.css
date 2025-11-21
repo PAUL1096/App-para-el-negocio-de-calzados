@@ -1,0 +1,316 @@
+/* Estilos personalizados para Sistema de Ventas de Calzado */
+
+:root {
+    --primary-color: #0d6efd;
+    --success-color: #198754;
+    --info-color: #0dcaf0;
+    --warning-color: #ffc107;
+    --danger-color: #dc3545;
+}
+
+/* Layout general */
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f8f9fa;
+}
+
+/* Navbar personalizado */
+.navbar-brand {
+    font-weight: 700;
+    font-size: 1.3rem;
+}
+
+.nav-link {
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.nav-link:hover {
+    transform: translateY(-2px);
+}
+
+/* Cards con sombra */
+.card {
+    border: none;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: all 0.3s ease;
+}
+
+.card:hover {
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+/* Tarjetas de estadísticas */
+.card.bg-primary,
+.card.bg-success,
+.card.bg-info,
+.card.bg-warning {
+    border: none;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+}
+
+.card.bg-warning {
+    color: #000;
+}
+
+/* Tablas mejoradas */
+.table {
+    font-size: 0.95rem;
+}
+
+.table thead {
+    background-color: #f8f9fa;
+}
+
+.table-hover tbody tr:hover {
+    background-color: rgba(13, 110, 253, 0.05);
+    cursor: pointer;
+}
+
+/* Badges personalizados */
+.badge {
+    font-weight: 500;
+    padding: 0.4em 0.6em;
+}
+
+/* Botones con efectos */
+.btn {
+    font-weight: 500;
+    transition: all 0.3s ease;
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+/* Formularios mejorados */
+.form-label {
+    font-weight: 600;
+    color: #495057;
+    margin-bottom: 0.5rem;
+}
+
+.form-control:focus,
+.form-select:focus {
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.15);
+}
+
+/* Cards de formulario */
+.card-header {
+    font-weight: 600;
+}
+
+/* Animaciones sutiles */
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.container,
+.container-fluid {
+    animation: fadeIn 0.5s ease-out;
+}
+
+/* Íconos con espaciado */
+.bi {
+    margin-right: 0.3rem;
+}
+
+/* Footer */
+footer {
+    margin-top: auto;
+    border-top: 1px solid #e9ecef;
+}
+
+/* Gráficos responsivos */
+canvas {
+    max-width: 100%;
+    height: auto !important;
+}
+
+/* Alertas personalizadas */
+.alert {
+    border: none;
+    border-left: 4px solid;
+}
+
+.alert-success {
+    border-left-color: var(--success-color);
+    background-color: #d1e7dd;
+}
+
+.alert-danger {
+    border-left-color: var(--danger-color);
+    background-color: #f8d7da;
+}
+
+.alert-info {
+    border-left-color: var(--info-color);
+    background-color: #cff4fc;
+}
+
+/* Mejoras para móviles */
+@media (max-width: 768px) {
+    .display-4,
+    .display-5 {
+        font-size: 2rem;
+    }
+
+    .card-body {
+        padding: 1rem;
+    }
+
+    .table-responsive {
+        font-size: 0.85rem;
+    }
+
+    .btn {
+        font-size: 0.9rem;
+    }
+}
+
+/* Loading spinner */
+.spinner-border-sm {
+    width: 1rem;
+    height: 1rem;
+    border-width: 0.15em;
+}
+
+/* Efectos hover en filas de tabla */
+tbody tr {
+    transition: background-color 0.2s ease;
+}
+
+/* Mejoras en el diseño de inputs numéricos */
+input[type="number"]::-webkit-inner-spin-button,
+input[type="number"]::-webkit-outer-spin-button {
+    opacity: 1;
+}
+
+/* Estilos para datalist */
+datalist {
+    display: none;
+}
+
+/* Card header con fondo */
+.card-header.bg-primary,
+.card-header.bg-success,
+.card-header.bg-info {
+    font-weight: 600;
+}
+
+/* Mejor contraste para badges en colores */
+.badge.bg-success,
+.badge.bg-primary,
+.badge.bg-danger,
+.badge.bg-info {
+    color: white;
+}
+
+/* Transiciones suaves para gráficos */
+#chartVentasSemanales,
+#chartProductosTop,
+#chartDestinos {
+    transition: opacity 0.3s ease;
+}
+
+/* Mejoras visuales en selectores */
+.form-select {
+    cursor: pointer;
+}
+
+/* Espaciado consistente */
+.mb-4 {
+    margin-bottom: 1.5rem !important;
+}
+
+/* Estilos para readonly inputs */
+input[readonly] {
+    background-color: #e9ecef;
+    cursor: not-allowed;
+}
+
+/* Botones de grupo mejorados */
+.btn-group-sm > .btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.875rem;
+}
+
+/* Animación para alertas */
+.alert {
+    animation: slideDown 0.3s ease-out;
+}
+
+@keyframes slideDown {
+    from {
+        opacity: 0;
+        transform: translateY(-20px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+/* Mejoras en la navegación */
+.navbar {
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+/* Estilos para inputs de grupo */
+.input-group-text {
+    font-weight: 600;
+}
+
+/* Cards con altura completa */
+.h-100 {
+    height: 100% !important;
+}
+
+/* Mejoras en la responsividad de columnas */
+@media (max-width: 992px) {
+    .col-lg-4,
+    .col-lg-6,
+    .col-lg-8 {
+        margin-bottom: 1rem;
+    }
+}
+
+/* Estilo para totales destacados */
+.input-group-lg .form-control {
+    font-size: 1.5rem;
+    font-weight: 700;
+}
+
+/* Mejoras en checkboxes */
+.form-check-input:checked {
+    background-color: var(--primary-color);
+    border-color: var(--primary-color);
+}
+
+/* Estilos para secciones ocultas */
+[style*="display: none"] {
+    transition: all 0.3s ease;
+}
+
+/* Padding consistente en cards */
+.card-body {
+    padding: 1.5rem;
+}
+
+/* Mejoras en hr */
+hr {
+    opacity: 0.1;
+}

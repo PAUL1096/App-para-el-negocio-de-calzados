@@ -1,0 +1,299 @@
+{% extends "base.html" %}
+
+{% block title %}Registrar Venta - Sistema de Ventas{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-5">
+                <i class="bi bi-plus-circle"></i> Registrar Nueva Venta
+            </h1>
+            <p class="text-muted">Complete el formulario para registrar una venta</p>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-lg-8">
+            <div class="card">
+                <div class="card-body">
+                    <form id="formVenta">
+                        <!-- ID de Venta -->
+                        <div class="mb-3">
+                            <label for="id_venta" class="form-label">ID de Venta</label>
+                            <input type="text" class="form-control" id="id_venta" value="{{ siguiente_id }}" readonly>
+                        </div>
+
+                        <!-- Información básica -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="fecha" class="form-label">Fecha *</label>
+                                <input type="date" class="form-control" id="fecha" required>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="cliente" class="form-label">Cliente *</label>
+                                <input type="text" class="form-control" id="cliente" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="destino" class="form-label">Destino *</label>
+                            <input type="text" class="form-control" id="destino" list="destinosList" required>
+                            <datalist id="destinosList">
+                                {% for destino in destinos_existentes %}
+                                <option value="{{ destino }}">
+                                {% endfor %}
+                            </datalist>
+                        </div>
+
+                        <!-- Información del producto -->
+                        <hr class="my-4">
+                        <h5 class="mb-3"><i class="bi bi-box-seam"></i> Producto</h5>
+
+                        <div class="mb-3">
+                            <label for="codigo_calzado" class="form-label">Código de Producto *</label>
+                            <select class="form-select" id="codigo_calzado" required>
+                                <option value="">Seleccione un producto...</option>
+                                {% for producto in productos %}
+                                <option value="{{ producto.codigo_calzado }}"
+                                        data-precio="{{ producto.precio_sugerido }}"
+                                        data-cuero="{{ producto.cuero }}"
+                                        data-color="{{ producto.color }}">
+                                    {{ producto.codigo_calzado }} - {{ producto.tipo }} ({{ producto.cuero }}, {{ producto.color }})
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="row">
+                            <div class="col-md-4 mb-3">
+                                <label for="cuero" class="form-label">Cuero</label>
+                                <input type="text" class="form-control" id="cuero" readonly>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="color" class="form-label">Color</label>
+                                <input type="text" class="form-control" id="color" readonly>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <label for="calidad" class="form-label">Calidad *</label>
+                                <select class="form-select" id="calidad" required>
+                                    <option value="primera">Primera</option>
+                                    <option value="segunda">Segunda</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Precio y cantidad -->
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="precio_unitario" class="form-label">Precio Unitario *</label>
+                                <div class="input-group">
+                                    <span class="input-group-text">$</span>
+                                    <input type="number" class="form-control" id="precio_unitario" step="0.01" required>
+                                </div>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="pares" class="form-label">Cantidad de Pares *</label>
+                                <input type="number" class="form-control" id="pares" min="1" required>
+                            </div>
+                        </div>
+
+                        <div class="mb-3">
+                            <label class="form-label">Total de Venta</label>
+                            <div class="input-group input-group-lg">
+                                <span class="input-group-text bg-success text-white">$</span>
+                                <input type="text" class="form-control fw-bold" id="total_venta" readonly>
+                            </div>
+                        </div>
+
+                        <!-- Información de pago -->
+                        <hr class="my-4">
+                        <h5 class="mb-3"><i class="bi bi-credit-card"></i> Información de Pago</h5>
+
+                        <div class="row">
+                            <div class="col-md-6 mb-3">
+                                <label for="estado_pago" class="form-label">Estado de Pago *</label>
+                                <select class="form-select" id="estado_pago" required>
+                                    <option value="Pagado">Pagado</option>
+                                    <option value="Pendiente">Pendiente</option>
+                                    <option value="Parcial">Parcial</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6 mb-3">
+                                <label for="metodo_pago" class="form-label">Método de Pago *</label>
+                                <select class="form-select" id="metodo_pago" required>
+                                    <option value="Efectivo">Efectivo</option>
+                                    <option value="Transferencia">Transferencia</option>
+                                    <option value="Tarjeta">Tarjeta</option>
+                                    <option value="Mixto">Mixto</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Logística -->
+                        <hr class="my-4">
+                        <div class="form-check mb-3">
+                            <input class="form-check-input" type="checkbox" id="incluir_logistica">
+                            <label class="form-check-label" for="incluir_logistica">
+                                <h5><i class="bi bi-truck"></i> Incluir Información de Logística</h5>
+                            </label>
+                        </div>
+
+                        <div id="seccion_logistica" style="display: none;">
+                            <div class="row">
+                                <div class="col-md-6 mb-3">
+                                    <label for="agencia" class="form-label">Agencia de Transporte</label>
+                                    <input type="text" class="form-control" id="agencia">
+                                </div>
+                                <div class="col-md-6 mb-3">
+                                    <label for="costo_envio" class="form-label">Costo de Envío</label>
+                                    <div class="input-group">
+                                        <span class="input-group-text">$</span>
+                                        <input type="number" class="form-control" id="costo_envio" step="0.01">
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="mb-3">
+                                <label for="obs_logistica" class="form-label">Observaciones de Envío</label>
+                                <textarea class="form-control" id="obs_logistica" rows="2"></textarea>
+                            </div>
+                        </div>
+
+                        <!-- Comentarios -->
+                        <div class="mb-3">
+                            <label for="comentario" class="form-label">Comentarios</label>
+                            <textarea class="form-control" id="comentario" rows="3"></textarea>
+                        </div>
+
+                        <!-- Botones -->
+                        <div class="d-grid gap-2 d-md-flex justify-content-md-end">
+                            <a href="/" class="btn btn-secondary">
+                                <i class="bi bi-x-circle"></i> Cancelar
+                            </a>
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-save"></i> Guardar Venta
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+
+        <!-- Panel de ayuda -->
+        <div class="col-lg-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title"><i class="bi bi-info-circle"></i> Ayuda</h5>
+                    <p class="card-text">
+                        <strong>Campos requeridos:</strong> Están marcados con asterisco (*).
+                    </p>
+                    <hr>
+                    <p class="card-text">
+                        <strong>Selección de producto:</strong> Al seleccionar un producto, el precio y características se cargarán automáticamente.
+                    </p>
+                    <hr>
+                    <p class="card-text">
+                        <strong>Total:</strong> Se calcula automáticamente al ingresar precio y cantidad.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const formVenta = document.getElementById('formVenta');
+    const codigoSelect = document.getElementById('codigo_calzado');
+    const precioInput = document.getElementById('precio_unitario');
+    const paresInput = document.getElementById('pares');
+    const totalInput = document.getElementById('total_venta');
+    const cueroInput = document.getElementById('cuero');
+    const colorInput = document.getElementById('color');
+    const incluirLogistica = document.getElementById('incluir_logistica');
+    const seccionLogistica = document.getElementById('seccion_logistica');
+
+    // Fecha por defecto: hoy
+    document.getElementById('fecha').valueAsDate = new Date();
+
+    // Cargar datos del producto seleccionado
+    codigoSelect.addEventListener('change', function() {
+        const selectedOption = this.options[this.selectedIndex];
+        if (selectedOption.value) {
+            precioInput.value = selectedOption.dataset.precio;
+            cueroInput.value = selectedOption.dataset.cuero;
+            colorInput.value = selectedOption.dataset.color;
+            calcularTotal();
+        }
+    });
+
+    // Calcular total automáticamente
+    function calcularTotal() {
+        const precio = parseFloat(precioInput.value) || 0;
+        const pares = parseInt(paresInput.value) || 0;
+        const total = precio * pares;
+        totalInput.value = total.toFixed(2);
+    }
+
+    precioInput.addEventListener('input', calcularTotal);
+    paresInput.addEventListener('input', calcularTotal);
+
+    // Mostrar/ocultar sección de logística
+    incluirLogistica.addEventListener('change', function() {
+        seccionLogistica.style.display = this.checked ? 'block' : 'none';
+    });
+
+    // Enviar formulario
+    formVenta.addEventListener('submit', async function(e) {
+        e.preventDefault();
+
+        const data = {
+            id_venta: document.getElementById('id_venta').value,
+            fecha: document.getElementById('fecha').value,
+            cliente: document.getElementById('cliente').value,
+            destino: document.getElementById('destino').value,
+            codigo_calzado: parseInt(document.getElementById('codigo_calzado').value),
+            cuero: cueroInput.value,
+            color: colorInput.value,
+            calidad: document.getElementById('calidad').value,
+            precio_unitario: parseFloat(precioInput.value),
+            pares: parseInt(paresInput.value),
+            total_venta: parseFloat(totalInput.value),
+            estado_pago: document.getElementById('estado_pago').value,
+            metodo_pago: document.getElementById('metodo_pago').value,
+            comentario: document.getElementById('comentario').value,
+            incluir_logistica: incluirLogistica.checked
+        };
+
+        if (incluirLogistica.checked) {
+            data.agencia = document.getElementById('agencia').value;
+            data.costo_envio = parseFloat(document.getElementById('costo_envio').value) || 0;
+            data.obs_logistica = document.getElementById('obs_logistica').value;
+        }
+
+        try {
+            const response = await fetch('/api/guardar_venta', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+
+            const result = await response.json();
+
+            if (result.success) {
+                alert('Venta registrada exitosamente');
+                window.location.href = '/';
+            } else {
+                alert('Error: ' + result.error);
+            }
+        } catch (error) {
+            alert('Error al guardar la venta: ' + error);
+        }
+    });
+});
+</script>
+{% endblock %}

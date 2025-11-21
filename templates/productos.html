@@ -1,0 +1,168 @@
+{% extends "base.html" %}
+
+{% block title %}Productos - Sistema de Ventas{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-5">
+                <i class="bi bi-box-seam"></i> Catálogo de Productos
+            </h1>
+            <p class="text-muted">Gestión del catálogo de calzado</p>
+        </div>
+        <div class="col-auto">
+            <a href="/productos/nuevo" class="btn btn-primary">
+                <i class="bi bi-plus-circle"></i> Nuevo Producto
+            </a>
+        </div>
+    </div>
+
+    <!-- Estadísticas del catálogo -->
+    <div class="row mb-4">
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">Total Productos</h5>
+                    <h2 class="mb-0">{{ productos|length }}</h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">Precio Promedio</h5>
+                    <h2 class="mb-0">
+                        ${% if productos %}{{ "%.2f"|format((productos|sum(attribute='precio_sugerido') / productos|length)) }}{% else %}0.00{% endif %}
+                    </h2>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-4">
+            <div class="card bg-light">
+                <div class="card-body">
+                    <h5 class="card-title">Margen Promedio</h5>
+                    <h2 class="mb-0">
+                        {% if productos %}
+                            {{ "%.1f"|format(((productos|map(attribute='precio_sugerido')|sum - productos|map(attribute='costo_unitario')|sum) / productos|map(attribute='costo_unitario')|sum * 100)) }}%
+                        {% else %}
+                            0.0%
+                        {% endif %}
+                    </h2>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tabla de productos -->
+    <div class="row">
+        <div class="col">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <div class="row align-items-center">
+                        <div class="col">
+                            <h5 class="mb-0">Listado de Productos</h5>
+                        </div>
+                        <div class="col-auto">
+                            <input type="text" class="form-control form-control-sm" id="buscarProducto" placeholder="Buscar...">
+                        </div>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="tablaProductos">
+                            <thead>
+                                <tr>
+                                    <th>Código</th>
+                                    <th>Tipo</th>
+                                    <th>Cuero</th>
+                                    <th>Color</th>
+                                    <th>Tallas</th>
+                                    <th>Costo</th>
+                                    <th>Precio</th>
+                                    <th>Margen</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for producto in productos %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-primary">{{ producto.codigo_calzado }}</span>
+                                    </td>
+                                    <td><strong>{{ producto.tipo }}</strong></td>
+                                    <td>{{ producto.cuero }}</td>
+                                    <td>
+                                        <span class="badge" style="background-color: {{ producto.color|lower }}; color: {% if producto.color|lower in ['amarillo', 'blanco'] %}black{% else %}white{% endif %}">
+                                            {{ producto.color }}
+                                        </span>
+                                    </td>
+                                    <td>{{ producto.serie_tallas }}</td>
+                                    <td>${{ "%.2f"|format(producto.costo_unitario) }}</td>
+                                    <td><strong>${{ "%.2f"|format(producto.precio_sugerido) }}</strong></td>
+                                    <td>
+                                        {% set margen = ((producto.precio_sugerido - producto.costo_unitario) / producto.costo_unitario * 100) %}
+                                        <span class="badge {% if margen > 50 %}bg-success{% elif margen > 30 %}bg-info{% else %}bg-warning{% endif %}">
+                                            {{ "%.1f"|format(margen) }}%
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <div class="btn-group btn-group-sm" role="group">
+                                            <a href="/productos/editar/{{ producto.codigo_calzado }}" class="btn btn-outline-primary" title="Editar">
+                                                <i class="bi bi-pencil"></i>
+                                            </a>
+                                            <button onclick="eliminarProducto({{ producto.codigo_calzado }})" class="btn btn-outline-danger" title="Eliminar">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Filtro de búsqueda
+document.getElementById('buscarProducto').addEventListener('input', function(e) {
+    const filtro = e.target.value.toLowerCase();
+    const filas = document.querySelectorAll('#tablaProductos tbody tr');
+
+    filas.forEach(fila => {
+        const texto = fila.textContent.toLowerCase();
+        fila.style.display = texto.includes(filtro) ? '' : 'none';
+    });
+});
+
+// Eliminar producto
+async function eliminarProducto(codigo) {
+    if (!confirm(`¿Está seguro de eliminar el producto ${codigo}?`)) {
+        return;
+    }
+
+    try {
+        const response = await fetch(`/api/productos/eliminar/${codigo}`, {
+            method: 'DELETE'
+        });
+
+        const result = await response.json();
+
+        if (result.success) {
+            alert(result.message);
+            location.reload();
+        } else {
+            alert('Error: ' + result.error);
+        }
+    } catch (error) {
+        alert('Error al eliminar producto: ' + error);
+    }
+}
+</script>
+{% endblock %}

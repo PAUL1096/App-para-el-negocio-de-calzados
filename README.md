@@ -1,25 +1,25 @@
-# 🛍️ Sistema de Gestión de Ventas de Calzado
+# Sistema de Gestión de Ventas de Calzado
 
 Sistema web completo para el registro, análisis y visualización de ventas de calzado, con módulos de logística y reportes interactivos.
 
-## 📋 Características Principales
+## Características Principales
 
 ### Módulo de Registro
-- ✅ Registro rápido de ventas semanales
-- ✅ Integración con catálogo de productos
-- ✅ Gestión de logística y envíos
-- ✅ Cálculo automático de totales
-- ✅ Múltiples métodos de pago
+- Registro rápido de ventas semanales
+- Integración con catálogo de productos
+- Gestión de logística y envíos
+- Cálculo automático de totales
+- Múltiples métodos de pago
 
 ### Módulo de Análisis
-- 📊 Dashboard con indicadores clave
-- 📈 Gráficos interactivos de ventas semanales
-- 🏆 Ranking de productos más vendidos
-- 🗺️ Análisis por destinos
-- 🚚 Estadísticas de logística y transporte
-- 📅 Filtros por año y período
+- Dashboard con indicadores clave
+- Gráficos interactivos de ventas semanales
+- Ranking de productos más vendidos
+- Análisis por destinos
+- Estadísticas de logística y transporte
+- Filtros por año y período
 
-## 🚀 Instalación y Configuración
+## Instalación y Configuración
 
 ### Requisitos Previos
 - Python 3.8 o superior
@@ -47,7 +47,7 @@ python app.py
 
 El sistema estará disponible en: **http://localhost:5000**
 
-## 📁 Estructura del Proyecto
+## Estructura del Proyecto
 
 ```
 sistema_ventas_calzado/
@@ -69,7 +69,7 @@ sistema_ventas_calzado/
         └── style.css          # Estilos personalizados
 ```
 
-## 🗄️ Estructura de la Base de Datos
+## Estructura de la Base de Datos
 
 ### Tabla: productos
 - codigo_calzado (PK)
@@ -109,7 +109,7 @@ sistema_ventas_calzado/
 - fecha_envio
 - observaciones
 
-## 📊 Uso del Sistema
+## Uso del Sistema
 
 ### Dashboard Principal
 Accede a **/** para ver:
@@ -142,7 +142,7 @@ Accede a **/productos** para:
 - Revisar costos, precios y márgenes
 - Obtener estadísticas del catálogo
 
-## 🔌 API Endpoints
+## API Endpoints
 
 ### Consultas
 - `GET /api/producto/<codigo>` - Obtener información de un producto
@@ -154,34 +154,16 @@ Accede a **/productos** para:
 ### Operaciones
 - `POST /api/guardar_venta` - Registrar nueva venta
 
-## 🎯 Roadmap de Desarrollo
+## Futuras Mejoras
 
-### ✅ Fase 1 (Completada)
-- Sistema de registro de ventas
-- Dashboard con estadísticas
-- Módulo de análisis con gráficos
-- Gestión de productos
-- Integración con logística
-
-### 📋 Fase 2 (Próxima)
 - Gestión de inventario en tiempo real
 - Control de stock por modelo y talla
 - Alertas de reabastecimiento
-- Registro de proveedores
-
-### 📋 Fase 3 (Futura)
-- Módulo de producción
-- Seguimiento de materiales
-- Costos de producción
-- Integración completa de la cadena
-
-### 📋 Fase 4 (Expansión)
-- Aplicación móvil
 - Reportes avanzados en PDF
-- Sistema de notificaciones
 - Exportación a Excel/CSV
+- Aplicación móvil
 
-## 🛠️ Tecnologías Utilizadas
+## Tecnologías Utilizadas
 
 - **Backend**: Python 3 + Flask
 - **Base de Datos**: SQLite
@@ -189,7 +171,7 @@ Accede a **/productos** para:
 - **Gráficos**: Chart.js
 - **Iconos**: Bootstrap Icons
 
-## 📱 Acceso desde Otros Dispositivos
+## Acceso desde Otros Dispositivos
 
 Para acceder desde otros dispositivos en la misma red:
 
@@ -200,7 +182,7 @@ Para acceder desde otros dispositivos en la misma red:
 2. Accede desde otro dispositivo usando:
    `http://[TU_IP]:5000`
 
-## 🔒 Seguridad
+## Seguridad
 
 **Nota**: Esta es una versión de desarrollo. Para producción:
 - Cambia `app.secret_key` por una clave segura
@@ -209,7 +191,7 @@ Para acceder desde otros dispositivos en la misma red:
 - Migra a una base de datos robusta (PostgreSQL, MySQL)
 - Implementa validación exhaustiva de datos
 
-## 🆘 Solución de Problemas
+## Solución de Problemas
 
 ### Error: "No module named flask"
 ```bash
@@ -224,13 +206,9 @@ pip install -r requirements.txt
 - Verifica tu conexión a internet (Chart.js se carga desde CDN)
 - Revisa la consola del navegador (F12)
 
-## 📝 Licencia
+## Licencia
 
 Este sistema es de uso interno y privado.
-
-## 👥 Soporte
-
-Para consultas sobre el sistema, contacta al administrador.
 
 ---
 

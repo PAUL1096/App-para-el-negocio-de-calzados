@@ -1,0 +1,325 @@
+{% extends "base.html" %}
+
+{% block title %}Análisis - Sistema de Ventas{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row mb-4">
+        <div class="col">
+            <h1 class="display-5">
+                <i class="bi bi-bar-chart"></i> Análisis de Ventas
+            </h1>
+            <p class="text-muted">Visualización y análisis de datos de ventas</p>
+        </div>
+    </div>
+
+    <!-- Filtros -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <label for="filtroAño" class="form-label">Año</label>
+            <select class="form-select" id="filtroAño">
+                <option value="2024">2024</option>
+                <option value="2023">2023</option>
+            </select>
+        </div>
+    </div>
+
+    <!-- Ventas Semanales -->
+    <div class="row mb-4">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header bg-primary text-white">
+                    <h5 class="mb-0"><i class="bi bi-graph-up"></i> Ventas Semanales</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartVentasSemanales" height="80"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Productos Top y Distribución -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-success text-white">
+                    <h5 class="mb-0"><i class="bi bi-trophy"></i> Top 10 Productos Más Vendidos</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartProductosTop"></canvas>
+                </div>
+            </div>
+        </div>
+        <div class="col-lg-6">
+            <div class="card h-100">
+                <div class="card-header bg-info text-white">
+                    <h5 class="mb-0"><i class="bi bi-pie-chart"></i> Distribución por Destino</h5>
+                </div>
+                <div class="card-body">
+                    <canvas id="chartDestinos"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Tablas de análisis -->
+    <div class="row mb-4">
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-table"></i> Análisis por Destino</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="tablaDestinos">
+                            <thead>
+                                <tr>
+                                    <th>Destino</th>
+                                    <th>Ventas</th>
+                                    <th>Pares</th>
+                                    <th>Ingresos</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-lg-6">
+            <div class="card">
+                <div class="card-header bg-light">
+                    <h5 class="mb-0"><i class="bi bi-truck"></i> Logística por Agencia</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-sm table-hover" id="tablaLogistica">
+                            <thead>
+                                <tr>
+                                    <th>Agencia</th>
+                                    <th>Envíos</th>
+                                    <th>Costo Total</th>
+                                    <th>Promedio</th>
+                                </tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let chartVentasSemanales, chartProductosTop, chartDestinos;
+
+document.addEventListener('DOMContentLoaded', function() {
+    const filtroAño = document.getElementById('filtroAño');
+    filtroAño.value = {{ año_actual }};
+
+    // Cargar datos iniciales
+    cargarAnalisis();
+
+    // Recargar al cambiar año
+    filtroAño.addEventListener('change', cargarAnalisis);
+});
+
+async function cargarAnalisis() {
+    const año = document.getElementById('filtroAño').value;
+
+    try {
+        // Cargar datos en paralelo
+        const [ventasSemanales, productosTop, destinos, logistica] = await Promise.all([
+            fetch(`/api/analisis/ventas_semanales?año=${año}`).then(r => r.json()),
+            fetch('/api/analisis/productos_top?limite=10').then(r => r.json()),
+            fetch('/api/analisis/destinos').then(r => r.json()),
+            fetch('/api/analisis/logistica').then(r => r.json())
+        ]);
+
+        // Actualizar gráficos
+        actualizarChartVentasSemanales(ventasSemanales);
+        actualizarChartProductosTop(productosTop);
+        actualizarChartDestinos(destinos);
+
+        // Actualizar tablas
+        actualizarTablaDestinos(destinos);
+        actualizarTablaLogistica(logistica);
+
+    } catch (error) {
+        console.error('Error cargando análisis:', error);
+    }
+}
+
+function actualizarChartVentasSemanales(data) {
+    const ctx = document.getElementById('chartVentasSemanales').getContext('2d');
+
+    if (chartVentasSemanales) {
+        chartVentasSemanales.destroy();
+    }
+
+    chartVentasSemanales = new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: data.semanas.map(s => `Semana ${s}`),
+            datasets: [
+                {
+                    label: 'Ingresos ($)',
+                    data: data.total_ingresos,
+                    borderColor: 'rgb(75, 192, 192)',
+                    backgroundColor: 'rgba(75, 192, 192, 0.2)',
+                    yAxisID: 'y',
+                },
+                {
+                    label: 'Pares Vendidos',
+                    data: data.total_pares,
+                    borderColor: 'rgb(255, 99, 132)',
+                    backgroundColor: 'rgba(255, 99, 132, 0.2)',
+                    yAxisID: 'y1',
+                }
+            ]
+        },
+        options: {
+            responsive: true,
+            interaction: {
+                mode: 'index',
+                intersect: false,
+            },
+            scales: {
+                y: {
+                    type: 'linear',
+                    display: true,
+                    position: 'left',
+                    title: {
+                        display: true,
+                        text: 'Ingresos ($)'
+                    }
+                },
+                y1: {
+                    type: 'linear',
+                    display: true,
+                    position: 'right',
+                    title: {
+                        display: true,
+                        text: 'Pares'
+                    },
+                    grid: {
+                        drawOnChartArea: false,
+                    }
+                }
+            }
+        }
+    });
+}
+
+function actualizarChartProductosTop(data) {
+    const ctx = document.getElementById('chartProductosTop').getContext('2d');
+
+    if (chartProductosTop) {
+        chartProductosTop.destroy();
+    }
+
+    chartProductosTop = new Chart(ctx, {
+        type: 'bar',
+        data: {
+            labels: data.map(p => `${p.codigo} - ${p.tipo}`),
+            datasets: [{
+                label: 'Pares Vendidos',
+                data: data.map(p => p.pares),
+                backgroundColor: 'rgba(54, 162, 235, 0.6)',
+                borderColor: 'rgba(54, 162, 235, 1)',
+                borderWidth: 1
+            }]
+        },
+        options: {
+            responsive: true,
+            indexAxis: 'y',
+            scales: {
+                x: {
+                    beginAtZero: true,
+                    title: {
+                        display: true,
+                        text: 'Pares'
+                    }
+                }
+            }
+        }
+    });
+}
+
+function actualizarChartDestinos(data) {
+    const ctx = document.getElementById('chartDestinos').getContext('2d');
+
+    if (chartDestinos) {
+        chartDestinos.destroy();
+    }
+
+    const top10 = data.slice(0, 10);
+
+    chartDestinos = new Chart(ctx, {
+        type: 'pie',
+        data: {
+            labels: top10.map(d => d.destino),
+            datasets: [{
+                data: top10.map(d => d.ingresos),
+                backgroundColor: [
+                    'rgba(255, 99, 132, 0.6)',
+                    'rgba(54, 162, 235, 0.6)',
+                    'rgba(255, 206, 86, 0.6)',
+                    'rgba(75, 192, 192, 0.6)',
+                    'rgba(153, 102, 255, 0.6)',
+                    'rgba(255, 159, 64, 0.6)',
+                    'rgba(199, 199, 199, 0.6)',
+                    'rgba(83, 102, 255, 0.6)',
+                    'rgba(255, 99, 255, 0.6)',
+                    'rgba(99, 255, 132, 0.6)'
+                ]
+            }]
+        },
+        options: {
+            responsive: true,
+            plugins: {
+                legend: {
+                    position: 'right',
+                }
+            }
+        }
+    });
+}
+
+function actualizarTablaDestinos(data) {
+    const tbody = document.querySelector('#tablaDestinos tbody');
+    tbody.innerHTML = '';
+
+    data.forEach(d => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${d.destino}</strong></td>
+            <td>${d.ventas}</td>
+            <td>${d.pares}</td>
+            <td>$${d.ingresos.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function actualizarTablaLogistica(data) {
+    const tbody = document.querySelector('#tablaLogistica tbody');
+    tbody.innerHTML = '';
+
+    data.forEach(l => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td><strong>${l.agencia}</strong></td>
+            <td>${l.envios}</td>
+            <td>$${l.costo_total.toFixed(2)}</td>
+            <td>$${l.costo_promedio.toFixed(2)}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+</script>
+{% endblock %}
