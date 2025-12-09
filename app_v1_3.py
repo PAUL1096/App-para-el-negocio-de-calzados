@@ -763,8 +763,379 @@ def finalizar_preparacion(id_preparacion):
 # MÓDULOS DE V1.2 (Mantenidos para compatibilidad)
 # ============================================================================
 
-# ... (Aquí irían todos los módulos de v1.2: ubicaciones, variantes, inventario, etc.)
-# Los incluiré en la siguiente parte para no hacer el archivo demasiado largo
+@app.route('/ubicaciones')
+def ubicaciones():
+    """Vista de gestión de ubicaciones/almacenes"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT * FROM ubicaciones ORDER BY nombre')
+    ubicaciones = cursor.fetchall()
+
+    ubicaciones_con_stock = []
+    for ubicacion in ubicaciones:
+        cursor.execute('''
+            SELECT
+                SUM(CASE WHEN tipo_stock = 'general' THEN cantidad_pares ELSE 0 END) as stock_general,
+                SUM(CASE WHEN tipo_stock = 'pedido' THEN cantidad_pares ELSE 0 END) as stock_pedidos
+            FROM inventario
+            WHERE id_ubicacion = ?
+        ''', (ubicacion['id_ubicacion'],))
+
+        stock = cursor.fetchone()
+        ubicaciones_con_stock.append({
+            'id': ubicacion['id_ubicacion'],
+            'nombre': ubicacion['nombre'],
+            'tipo': ubicacion['tipo'],
+            'descripcion': ubicacion['descripcion'],
+            'activo': ubicacion['activo'],
+            'stock_general': stock['stock_general'] or 0,
+            'stock_pedidos': stock['stock_pedidos'] or 0
+        })
+
+    conn.close()
+
+    return render_template('ubicaciones.html', ubicaciones=ubicaciones_con_stock)
+
+@app.route('/api/ubicaciones/crear', methods=['POST'])
+def crear_ubicacion():
+    """API para crear nueva ubicación"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO ubicaciones (nombre, tipo, descripcion)
+            VALUES (?, ?, ?)
+        ''', (data['nombre'], data['tipo'], data.get('descripcion', '')))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Ubicación creada exitosamente'})
+
+    except sqlite3.IntegrityError:
+        return jsonify({'success': False, 'error': 'Ya existe una ubicación con ese nombre'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/ubicaciones/<int:id_ubicacion>', methods=['GET'])
+def obtener_ubicacion(id_ubicacion):
+    """API para obtener detalles de una ubicación"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('SELECT * FROM ubicaciones WHERE id_ubicacion = ?', (id_ubicacion,))
+    ubicacion = cursor.fetchone()
+
+    conn.close()
+
+    if ubicacion:
+        return jsonify(dict(ubicacion))
+    return jsonify({'error': 'Ubicación no encontrada'}), 404
+
+@app.route('/productos_base')
+def productos_base():
+    """Vista de productos base"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT
+            pb.*,
+            COUNT(DISTINCT v.id_variante) as num_variantes,
+            SUM(CASE WHEN v.activo = 1 THEN 1 ELSE 0 END) as variantes_activas
+        FROM productos_base pb
+        LEFT JOIN variantes v ON pb.codigo_producto = v.codigo_producto
+        GROUP BY pb.codigo_producto
+        ORDER BY pb.codigo_producto
+    ''')
+    productos = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('productos_base.html', productos=productos)
+
+@app.route('/variantes')
+def variantes():
+    """Vista de todas las variantes"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT
+            v.*,
+            pb.tipo,
+            pb.nombre as nombre_producto,
+            COALESCE(SUM(i.cantidad_pares), 0) as stock_total
+        FROM variantes v
+        JOIN productos_base pb ON v.codigo_producto = pb.codigo_producto
+        LEFT JOIN inventario i ON v.id_variante = i.id_variante
+        GROUP BY v.id_variante
+        ORDER BY v.codigo_producto, v.cuero, v.color
+    ''')
+    variantes = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('variantes.html', variantes=variantes)
+
+@app.route('/api/variantes/crear', methods=['POST'])
+def crear_variante():
+    """API para crear nueva variante"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO variantes
+            (codigo_producto, cuero, color, serie_tallas, pares_por_docena,
+             costo_unitario, precio_sugerido, observaciones)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data['codigo_producto'],
+            data['cuero'],
+            data['color'],
+            data['serie_tallas'],
+            data.get('pares_por_docena', 12),
+            data['costo_unitario'],
+            data['precio_sugerido'],
+            data.get('observaciones', '')
+        ))
+
+        id_variante = cursor.lastrowid
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Variante creada exitosamente',
+            'id_variante': id_variante
+        })
+
+    except sqlite3.IntegrityError:
+        return jsonify({'success': False, 'error': 'Ya existe una variante con esa combinación'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/variantes/<int:id_variante>', methods=['GET'])
+def obtener_variante(id_variante):
+    """API para obtener detalles de una variante"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT v.*, pb.tipo, pb.nombre
+        FROM variantes v
+        JOIN productos_base pb ON v.codigo_producto = pb.codigo_producto
+        WHERE v.id_variante = ?
+    ''', (id_variante,))
+    variante = cursor.fetchone()
+
+    conn.close()
+
+    if variante:
+        return jsonify(dict(variante))
+    return jsonify({'error': 'Variante no encontrada'}), 404
+
+@app.route('/inventario')
+def inventario():
+    """Vista general del inventario"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT
+            v.id_variante,
+            v.codigo_producto,
+            pb.tipo,
+            pb.nombre,
+            v.cuero,
+            v.color,
+            v.serie_tallas,
+            v.precio_sugerido,
+            SUM(CASE WHEN i.tipo_stock = 'general' THEN i.cantidad_pares ELSE 0 END) as stock_general,
+            SUM(CASE WHEN i.tipo_stock = 'pedido' THEN i.cantidad_pares ELSE 0 END) as stock_pedidos,
+            SUM(i.cantidad_pares) as stock_total
+        FROM variantes v
+        JOIN productos_base pb ON v.codigo_producto = pb.codigo_producto
+        LEFT JOIN inventario i ON v.id_variante = i.id_variante
+        WHERE v.activo = 1
+        GROUP BY v.id_variante
+        HAVING stock_total > 0 OR stock_total IS NULL
+        ORDER BY v.codigo_producto, v.cuero, v.color
+    ''')
+    inventario_data = cursor.fetchall()
+
+    cursor.execute('SELECT * FROM ubicaciones WHERE activo = 1 ORDER BY nombre')
+    ubicaciones = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('inventario.html',
+                         inventario=inventario_data,
+                         ubicaciones=ubicaciones)
+
+@app.route('/api/inventario/ingresar', methods=['POST'])
+def ingresar_inventario():
+    """API para ingresar stock (producción)"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        id_variante = data['id_variante']
+        id_ubicacion = data['id_ubicacion']
+        cantidad_pares = data['cantidad_pares']
+        tipo_stock = data.get('tipo_stock', 'general')
+
+        cursor.execute('''
+            SELECT id_inventario, cantidad_pares
+            FROM inventario
+            WHERE id_variante = ? AND id_ubicacion = ? AND tipo_stock = ?
+            AND (id_pedido_cliente IS NULL OR id_pedido_cliente = ?)
+        ''', (id_variante, id_ubicacion, tipo_stock, data.get('id_pedido_cliente')))
+
+        inventario_actual = cursor.fetchone()
+
+        if inventario_actual:
+            nueva_cantidad = inventario_actual['cantidad_pares'] + cantidad_pares
+            cursor.execute('''
+                UPDATE inventario
+                SET cantidad_pares = ?, fecha_actualizacion = CURRENT_TIMESTAMP
+                WHERE id_inventario = ?
+            ''', (nueva_cantidad, inventario_actual['id_inventario']))
+        else:
+            cursor.execute('''
+                INSERT INTO inventario
+                (id_variante, id_ubicacion, tipo_stock, cantidad_pares, id_pedido_cliente)
+                VALUES (?, ?, ?, ?, ?)
+            ''', (id_variante, id_ubicacion, tipo_stock, cantidad_pares,
+                  data.get('id_pedido_cliente')))
+
+        cursor.execute('''
+            INSERT INTO movimientos_inventario
+            (tipo_movimiento, id_variante, id_ubicacion_destino, cantidad_pares,
+             tipo_stock, id_pedido_cliente, motivo)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', ('ingreso', id_variante, id_ubicacion, cantidad_pares,
+              tipo_stock, data.get('id_pedido_cliente'),
+              data.get('motivo', 'Ingreso de producción')))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Inventario ingresado exitosamente'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/inventario/trasladar', methods=['POST'])
+def trasladar_inventario():
+    """API para trasladar stock entre ubicaciones"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        id_variante = data['id_variante']
+        id_ubicacion_origen = data['id_ubicacion_origen']
+        id_ubicacion_destino = data['id_ubicacion_destino']
+        cantidad_pares = data['cantidad_pares']
+        tipo_stock = data.get('tipo_stock', 'general')
+
+        cursor.execute('''
+            SELECT cantidad_pares
+            FROM inventario
+            WHERE id_variante = ? AND id_ubicacion = ? AND tipo_stock = ?
+        ''', (id_variante, id_ubicacion_origen, tipo_stock))
+
+        stock_origen = cursor.fetchone()
+
+        if not stock_origen or stock_origen['cantidad_pares'] < cantidad_pares:
+            return jsonify({
+                'success': False,
+                'error': 'Stock insuficiente en ubicación de origen'
+            }), 400
+
+        nueva_cantidad_origen = stock_origen['cantidad_pares'] - cantidad_pares
+        cursor.execute('''
+            UPDATE inventario
+            SET cantidad_pares = ?, fecha_actualizacion = CURRENT_TIMESTAMP
+            WHERE id_variante = ? AND id_ubicacion = ? AND tipo_stock = ?
+        ''', (nueva_cantidad_origen, id_variante, id_ubicacion_origen, tipo_stock))
+
+        cursor.execute('''
+            SELECT id_inventario, cantidad_pares
+            FROM inventario
+            WHERE id_variante = ? AND id_ubicacion = ? AND tipo_stock = ?
+        ''', (id_variante, id_ubicacion_destino, tipo_stock))
+
+        inventario_destino = cursor.fetchone()
+
+        if inventario_destino:
+            nueva_cantidad_destino = inventario_destino['cantidad_pares'] + cantidad_pares
+            cursor.execute('''
+                UPDATE inventario
+                SET cantidad_pares = ?, fecha_actualizacion = CURRENT_TIMESTAMP
+                WHERE id_inventario = ?
+            ''', (nueva_cantidad_destino, inventario_destino['id_inventario']))
+        else:
+            cursor.execute('''
+                INSERT INTO inventario
+                (id_variante, id_ubicacion, tipo_stock, cantidad_pares)
+                VALUES (?, ?, ?, ?)
+            ''', (id_variante, id_ubicacion_destino, tipo_stock, cantidad_pares))
+
+        cursor.execute('''
+            INSERT INTO movimientos_inventario
+            (tipo_movimiento, id_variante, id_ubicacion_origen, id_ubicacion_destino,
+             cantidad_pares, tipo_stock, motivo)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', ('traslado', id_variante, id_ubicacion_origen, id_ubicacion_destino,
+              cantidad_pares, tipo_stock, data.get('motivo', 'Traslado entre ubicaciones')))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Traslado realizado exitosamente'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/pedidos_cliente')
+def pedidos_cliente():
+    """Vista de pedidos de clientes"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT * FROM pedidos_cliente
+        ORDER BY
+            CASE estado
+                WHEN 'pendiente' THEN 1
+                WHEN 'en_preparacion' THEN 2
+                WHEN 'entregado' THEN 3
+                WHEN 'cancelado' THEN 4
+            END,
+            fecha_entrega_estimada
+    ''')
+    pedidos = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('pedidos_cliente.html', pedidos=pedidos)
+
+@app.route('/analisis')
+def analisis():
+    """Módulo de análisis"""
+    return render_template('analisis.html', año_actual=datetime.now().year)
 
 if __name__ == '__main__':
     print("\n" + "="*60)
