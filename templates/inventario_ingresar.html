@@ -1,0 +1,148 @@
+{% extends "base.html" %}
+{% block title %}Ingresar al Inventario - Sistema Calzado{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-box-arrow-in-down"></i> Ingresar Producto al Inventario</h1>
+    <p class="text-muted">Registrar stock en ubicación</p>
+</div>
+
+<div class="row">
+    <!-- Info del Producto -->
+    <div class="col-md-5">
+        <div class="card mb-4">
+            <div class="card-header">
+                <h5><i class="bi bi-info-circle"></i> Producto</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <th>Código:</th>
+                        <td><span class="badge bg-primary">{{ producto.codigo_interno }}</span></td>
+                    </tr>
+                    <tr>
+                        <th>Tipo:</th>
+                        <td>{{ producto.tipo_calzado }}</td>
+                    </tr>
+                    <tr>
+                        <th>Horma:</th>
+                        <td>{{ producto.tipo_horma }}</td>
+                    </tr>
+                    <tr>
+                        <th>Segmento:</th>
+                        <td>{{ producto.segmento }}</td>
+                    </tr>
+                    <tr>
+                        <th colspan="2"><hr></th>
+                    </tr>
+                    <tr>
+                        <th>Cuero:</th>
+                        <td><strong>{{ producto.cuero }}</strong></td>
+                    </tr>
+                    <tr>
+                        <th>Color:</th>
+                        <td>{{ producto.color_cuero }}</td>
+                    </tr>
+                    <tr>
+                        <th>Suela:</th>
+                        <td>{{ producto.suela }}</td>
+                    </tr>
+                    <tr>
+                        <th>Forro:</th>
+                        <td>{{ producto.forro or 'Sin forro' }}</td>
+                    </tr>
+                    <tr>
+                        <th>Serie Tallas:</th>
+                        <td><small>{{ producto.serie_tallas }}</small></td>
+                    </tr>
+                    <tr>
+                        <th>Total Producido:</th>
+                        <td><strong>{{ producto.cantidad_total_pares }} pares</strong></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <!-- Formulario de Ingreso -->
+    <div class="col-md-7">
+        <div class="card">
+            <div class="card-header">
+                <h5><i class="bi bi-clipboard-check"></i> Datos de Ingreso</h5>
+            </div>
+            <div class="card-body">
+                <form id="formIngreso">
+                    <input type="hidden" name="id_producto" value="{{ producto.id_producto }}">
+
+                    <div class="mb-3">
+                        <label class="form-label">Ubicación *</label>
+                        <select class="form-select" name="id_ubicacion" required>
+                            <option value="">Seleccione ubicación...</option>
+                            {% for ubicacion in ubicaciones %}
+                            <option value="{{ ubicacion.id_ubicacion }}">{{ ubicacion.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Stock *</label>
+                        <select class="form-select" name="tipo_stock" required>
+                            <option value="general">Stock General (Para venta libre)</option>
+                            <option value="pedido">Stock de Pedido (Reservado para cliente)</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cantidad de Pares *</label>
+                        <input type="number" class="form-control" name="cantidad_pares"
+                               required min="1" max="{{ producto.cantidad_total_pares }}">
+                        <small class="text-muted">Máximo: {{ producto.cantidad_total_pares }} pares</small>
+                    </div>
+
+                    <div class="alert alert-info">
+                        <i class="bi bi-info-circle"></i>
+                        <strong>Nota:</strong> Puedes ingresar el producto en múltiples ubicaciones.
+                        Solo asegúrate de no exceder la cantidad total producida.
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        <button type="submit" class="btn btn-success">
+                            <i class="bi bi-check-circle"></i> Ingresar al Inventario
+                        </button>
+                        <a href="/produccion" class="btn btn-secondary">
+                            Cancelar
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.getElementById('formIngreso').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const formData = new FormData(this);
+    const data = Object.fromEntries(formData);
+
+    fetch('/api/inventario/ingresar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = '/inventario';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+});
+</script>
+{% endblock %}

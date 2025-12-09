@@ -255,7 +255,114 @@ def crear_producto():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 # ============================================================================
-# MÓDULO: UBICACIONES (mantener del sistema anterior)
+# MÓDULO: INVENTARIO
+# ============================================================================
+
+@app.route('/inventario')
+def inventario():
+    """Vista de inventario de productos"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT
+            i.*,
+            p.cuero,
+            p.color_cuero,
+            p.suela,
+            p.forro,
+            p.serie_tallas,
+            p.precio_sugerido,
+            vb.codigo_interno,
+            vb.tipo_calzado,
+            vb.tipo_horma,
+            vb.segmento,
+            u.nombre as ubicacion_nombre
+        FROM inventario i
+        JOIN productos_producidos p ON i.id_producto = p.id_producto
+        JOIN variantes_base vb ON p.id_variante_base = vb.id_variante_base
+        JOIN ubicaciones u ON i.id_ubicacion = u.id_ubicacion
+        ORDER BY u.nombre, vb.codigo_interno, p.cuero, p.color_cuero
+    ''')
+    items_inventario = cursor.fetchall()
+
+    # Obtener ubicaciones
+    cursor.execute('SELECT * FROM ubicaciones WHERE activo = 1 ORDER BY nombre')
+    ubicaciones = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('inventario_v2.html',
+                         items=items_inventario,
+                         ubicaciones=ubicaciones)
+
+@app.route('/inventario/ingresar/<int:id_producto>')
+def inventario_ingresar_form(id_producto):
+    """Formulario para ingresar producto al inventario"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Obtener producto
+    cursor.execute('''
+        SELECT
+            p.*,
+            vb.codigo_interno,
+            vb.tipo_calzado,
+            vb.tipo_horma,
+            vb.segmento
+        FROM productos_producidos p
+        JOIN variantes_base vb ON p.id_variante_base = vb.id_variante_base
+        WHERE p.id_producto = ?
+    ''', (id_producto,))
+    producto = cursor.fetchone()
+
+    # Obtener ubicaciones
+    cursor.execute('SELECT * FROM ubicaciones WHERE activo = 1 ORDER BY nombre')
+    ubicaciones = cursor.fetchall()
+
+    conn.close()
+
+    if not producto:
+        flash('Producto no encontrado', 'danger')
+        return redirect(url_for('produccion'))
+
+    return render_template('inventario_ingresar.html',
+                         producto=producto,
+                         ubicaciones=ubicaciones)
+
+@app.route('/api/inventario/ingresar', methods=['POST'])
+def ingresar_inventario():
+    """API para ingresar producto al inventario"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO inventario
+            (id_producto, id_ubicacion, tipo_stock, cantidad_pares)
+            VALUES (?, ?, ?, ?)
+        ''', (
+            data['id_producto'],
+            data['id_ubicacion'],
+            data.get('tipo_stock', 'general'),
+            data['cantidad_pares']
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Producto ingresado al inventario exitosamente'
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+# ============================================================================
+# MÓDULO: UBICACIONES
 # ============================================================================
 
 @app.route('/ubicaciones')
