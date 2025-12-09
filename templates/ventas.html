@@ -1,9 +1,19 @@
 {% extends "base.html" %}
 {% block title %}Ventas - Sistema Calzado{% endblock %}
 {% block content %}
-<div class="page-header">
-    <h1><i class="bi bi-cart-check"></i> Registro de Ventas</h1>
-    <p class="text-muted">Sistema nuevo vinculado a preparaciones</p>
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-cart-check"></i> Registro de Ventas</h1>
+        <p class="text-muted">Sistema nuevo vinculado a preparaciones</p>
+    </div>
+    <div>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPreparacion">
+            <i class="bi bi-plus-circle"></i> Nueva Venta
+        </button>
+        <a href="/preparaciones" class="btn btn-outline-secondary">
+            <i class="bi bi-box-seam"></i> Ver Preparaciones
+        </a>
+    </div>
 </div>
 
 <div class="card">
@@ -55,6 +65,67 @@
     </div>
     <div class="card-footer text-muted">
         Total: {{ ventas|length }} ventas (últimas 100)
+    </div>
+</div>
+
+<!-- Modal: Seleccionar Preparación para Venta -->
+<div class="modal fade" id="modalSeleccionarPreparacion" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-box-seam"></i> Seleccionar Preparación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">Selecciona una preparación con stock disponible para registrar la venta:</p>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Fecha</th>
+                                <th>Día Venta</th>
+                                <th>Origen</th>
+                                <th>Pares Disponibles</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if preparaciones_disponibles %}
+                                {% for prep in preparaciones_disponibles %}
+                                <tr>
+                                    <td><strong>{{ prep.codigo_preparacion }}</strong></td>
+                                    <td>{{ prep.fecha_preparacion }}</td>
+                                    <td><span class="badge bg-primary">{{ prep.dia_venta }}</span></td>
+                                    <td>{{ prep.ubicacion_origen }}</td>
+                                    <td>
+                                        <span class="badge bg-success">{{ prep.pendiente_vender }} pares</span>
+                                    </td>
+                                    <td>
+                                        <a href="/ventas/nueva/{{ prep.id_preparacion }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-cart-plus"></i> Registrar Venta
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="6" class="text-center text-muted py-4">
+                                        <i class="bi bi-info-circle"></i> No hay preparaciones con stock disponible.<br>
+                                        <a href="/preparaciones/nueva" class="btn btn-sm btn-primary mt-2">
+                                            <i class="bi bi-plus-circle"></i> Crear Nueva Preparación
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+            </div>
+        </div>
     </div>
 </div>
 {% endblock %}

@@ -55,7 +55,8 @@
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Código</th>
+                        <th>Código Sistema</th>
+                        <th>Código Interno</th>
                         <th>Tipo</th>
                         <th>Cuero</th>
                         <th>Color</th>
@@ -73,6 +74,13 @@
                     <tr>
                         <td><small class="text-muted">#{{ variante.id_variante }}</small></td>
                         <td><strong>{{ variante.codigo_producto }}</strong></td>
+                        <td>
+                            {% if variante.codigo_interno %}
+                                <span class="badge bg-info">{{ variante.codigo_interno }}</span>
+                            {% else %}
+                                <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
                         <td><span class="badge bg-secondary">{{ variante.tipo }}</span></td>
                         <td><strong>{{ variante.cuero }}</strong></td>
                         <td>{{ variante.color }}</td>
@@ -126,25 +134,31 @@
                 <form id="formNuevaVariante">
                     <div class="row g-3">
                         <div class="col-md-4">
-                            <label class="form-label">Código Producto</label>
+                            <label class="form-label">Código Producto *</label>
                             <input type="number" class="form-control" name="codigo_producto" required>
+                            <small class="text-muted">Sistema</small>
                         </div>
                         <div class="col-md-4">
-                            <label class="form-label">Cuero</label>
+                            <label class="form-label">Código Interno</label>
+                            <input type="text" class="form-control" name="codigo_interno" placeholder="Ej: M-2024-001">
+                            <small class="text-muted">Tu código (opcional)</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cuero *</label>
                             <input type="text" class="form-control" name="cuero" required placeholder="Ej: huante, cuero, sintético">
                         </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Color</label>
+                        <div class="col-md-6">
+                            <label class="form-label">Color *</label>
                             <input type="text" class="form-control" name="color" required placeholder="Ej: negro, marrón">
                         </div>
-                        <div class="col-md-8">
-                            <label class="form-label">Serie de Tallas</label>
-                            <input type="text" class="form-control" name="serie_tallas" required
-                                   placeholder="Ej: Serie Normal, 38(2) 39(3) 40(3) 41(2) 42(2)">
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Pares por Docena</label>
                             <input type="number" class="form-control" name="pares_por_docena" value="12">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Serie de Tallas *</label>
+                            <input type="text" class="form-control" name="serie_tallas" required
+                                   placeholder="Ej: Serie Normal, 38(2) 39(3) 40(3) 41(2) 42(2)">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Costo Unitario</label>
@@ -192,24 +206,29 @@
                         <div class="col-md-4">
                             <label class="form-label">Código Producto</label>
                             <input type="number" class="form-control" id="edit_codigo_producto" name="codigo_producto" readonly>
-                            <small class="text-muted">No editable</small>
+                            <small class="text-muted">No editable - Sistema</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Código Interno</label>
+                            <input type="text" class="form-control" id="edit_codigo_interno" name="codigo_interno" placeholder="Ej: M-2024-001">
+                            <small class="text-muted">Tu código (editable)</small>
                         </div>
                         <div class="col-md-4">
                             <label class="form-label">Cuero *</label>
                             <input type="text" class="form-control" id="edit_cuero" name="cuero" required placeholder="Ej: huante, cuero, sintético">
                         </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Color *</label>
                             <input type="text" class="form-control" id="edit_color" name="color" required placeholder="Ej: negro, marrón">
                         </div>
-                        <div class="col-md-8">
+                        <div class="col-md-6">
+                            <label class="form-label">Pares por Docena</label>
+                            <input type="number" class="form-control" id="edit_pares_por_docena" name="pares_por_docena" value="12">
+                        </div>
+                        <div class="col-md-12">
                             <label class="form-label">Serie de Tallas *</label>
                             <input type="text" class="form-control" id="edit_serie_tallas" name="serie_tallas" required
                                    placeholder="Ej: Serie Normal, 38(2) 39(3) 40(3) 41(2) 42(2)">
-                        </div>
-                        <div class="col-md-4">
-                            <label class="form-label">Pares por Docena</label>
-                            <input type="number" class="form-control" id="edit_pares_por_docena" name="pares_por_docena" value="12">
                         </div>
                         <div class="col-md-6">
                             <label class="form-label">Costo Unitario *</label>
@@ -286,6 +305,7 @@ function editarVariante(idVariante) {
                 // Llenar el formulario con los datos actuales
                 document.getElementById('edit_id_variante').value = variante.id_variante;
                 document.getElementById('edit_codigo_producto').value = variante.codigo_producto;
+                document.getElementById('edit_codigo_interno').value = variante.codigo_interno || '';
                 document.getElementById('edit_cuero').value = variante.cuero;
                 document.getElementById('edit_color').value = variante.color;
                 document.getElementById('edit_serie_tallas').value = variante.serie_tallas;

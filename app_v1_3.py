@@ -606,6 +606,7 @@ def ventas():
     conn = get_db()
     cursor = conn.cursor()
 
+    # Obtener ventas
     cursor.execute('''
         SELECT
             v.*,
@@ -622,12 +623,27 @@ def ventas():
         ORDER BY v.fecha_venta DESC, v.hora_venta DESC
         LIMIT 100
     ''')
-
     ventas = cursor.fetchall()
+
+    # Obtener preparaciones con stock disponible para vender
+    cursor.execute('''
+        SELECT
+            p.*,
+            u.nombre as ubicacion_origen,
+            SUM(pd.cantidad_pares - pd.cantidad_vendida - pd.cantidad_devuelta) as pendiente_vender
+        FROM preparaciones p
+        LEFT JOIN ubicaciones u ON p.id_ubicacion_origen = u.id_ubicacion
+        LEFT JOIN preparaciones_detalle pd ON p.id_preparacion = pd.id_preparacion
+        WHERE p.estado IN ('pendiente', 'en_proceso')
+        GROUP BY p.id_preparacion
+        HAVING pendiente_vender > 0
+        ORDER BY p.fecha_preparacion DESC, p.dia_venta
+    ''')
+    preparaciones_disponibles = cursor.fetchall()
 
     conn.close()
 
-    return render_template('ventas.html', ventas=ventas)
+    return render_template('ventas.html', ventas=ventas, preparaciones_disponibles=preparaciones_disponibles)
 
 # ============================================================================
 # MÓDULO: FINALIZAR PREPARACIÓN (Devoluciones)
@@ -893,11 +909,12 @@ def crear_variante():
 
         cursor.execute('''
             INSERT INTO variantes
-            (codigo_producto, cuero, color, serie_tallas, pares_por_docena,
+            (codigo_producto, codigo_interno, cuero, color, serie_tallas, pares_por_docena,
              costo_unitario, precio_sugerido, observaciones)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             data['codigo_producto'],
+            data.get('codigo_interno', None),
             data['cuero'],
             data['color'],
             data['serie_tallas'],
@@ -956,10 +973,11 @@ def editar_variante(id_variante):
 
         cursor.execute('''
             UPDATE variantes
-            SET cuero = ?, color = ?, serie_tallas = ?, pares_por_docena = ?,
+            SET codigo_interno = ?, cuero = ?, color = ?, serie_tallas = ?, pares_por_docena = ?,
                 costo_unitario = ?, precio_sugerido = ?, observaciones = ?, activo = ?
             WHERE id_variante = ?
         ''', (
+            data.get('codigo_interno', None),
             data['cuero'],
             data['color'],
             data['serie_tallas'],
