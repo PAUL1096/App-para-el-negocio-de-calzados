@@ -1,0 +1,273 @@
+{% extends "base.html" %}
+
+{% block title %}Inventario - Sistema Calzado{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-box-seam"></i> Inventario General</h1>
+        <p class="text-muted">Control de stock por variante y ubicación</p>
+    </div>
+    <div class="btn-group">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalIngresarStock">
+            <i class="bi bi-plus-circle"></i> Ingresar Stock
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalTrasladar">
+            <i class="bi bi-arrow-left-right"></i> Trasladar
+        </button>
+    </div>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Buscar por código</label>
+                <input type="text" class="form-control" id="filtro_codigo" placeholder="Código producto">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Tipo de stock</label>
+                <select class="form-select" id="filtro_tipo">
+                    <option value="">Todos</option>
+                    <option value="general">Stock General</option>
+                    <option value="pedido">Pedidos</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">Stock mínimo</label>
+                <input type="number" class="form-control" id="filtro_minimo" value="0">
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100">
+                    <i class="bi bi-funnel"></i> Filtrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de inventario -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Tipo</th>
+                        <th>Variante</th>
+                        <th>Serie</th>
+                        <th>Stock General</th>
+                        <th>Pedidos</th>
+                        <th>Total</th>
+                        <th>Precio</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for item in inventario %}
+                    <tr>
+                        <td><strong>{{ item.codigo_producto }}</strong></td>
+                        <td><span class="badge bg-secondary">{{ item.tipo }}</span></td>
+                        <td>
+                            <strong>{{ item.cuero }}</strong> - {{ item.color }}
+                        </td>
+                        <td>
+                            <small class="text-muted">{{ item.serie_tallas }}</small>
+                        </td>
+                        <td>
+                            <span class="badge {% if item.stock_general > 20 %}bg-success{% elif item.stock_general > 10 %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ item.stock_general }} pares
+                            </span>
+                        </td>
+                        <td>
+                            <span class="badge bg-info">
+                                {{ item.stock_pedidos }} pares
+                            </span>
+                        </td>
+                        <td>
+                            <strong>{{ item.stock_total }} pares</strong>
+                        </td>
+                        <td>
+                            ${{ "%.2f"|format(item.precio_sugerido) }}
+                        </td>
+                        <td>
+                            <button class="btn btn-sm btn-outline-primary" onclick="verDetalle({{ item.id_variante }})">
+                                <i class="bi bi-eye"></i>
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Ingresar Stock -->
+<div class="modal fade" id="modalIngresarStock" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Ingresar Stock</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formIngresarStock">
+                    <div class="mb-3">
+                        <label class="form-label">Variante</label>
+                        <select class="form-select" name="id_variante" required>
+                            <option value="">Seleccionar...</option>
+                            {% for item in inventario %}
+                            <option value="{{ item.id_variante }}">
+                                {{ item.codigo_producto }} - {{ item.cuero }} {{ item.color }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Ubicación</label>
+                        <select class="form-select" name="id_ubicacion" required>
+                            {% for ub in ubicaciones %}
+                            <option value="{{ ub.id_ubicacion }}">{{ ub.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipo de Stock</label>
+                        <select class="form-select" name="tipo_stock" required>
+                            <option value="general">Stock General</option>
+                            <option value="pedido">Pedido Cliente</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cantidad (pares)</label>
+                        <input type="number" class="form-control" name="cantidad_pares" min="1" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Motivo</label>
+                        <input type="text" class="form-control" name="motivo" placeholder="Ej: Producción semanal">
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="ingresarStock()">
+                    <i class="bi bi-save"></i> Ingresar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Trasladar -->
+<div class="modal fade" id="modalTrasladar" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-arrow-left-right"></i> Trasladar Stock</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formTrasladar">
+                    <div class="mb-3">
+                        <label class="form-label">Variante</label>
+                        <select class="form-select" name="id_variante" required>
+                            <option value="">Seleccionar...</option>
+                            {% for item in inventario %}
+                            <option value="{{ item.id_variante }}">
+                                {{ item.codigo_producto }} - {{ item.cuero }} {{ item.color }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Desde</label>
+                        <select class="form-select" name="id_ubicacion_origen" required>
+                            {% for ub in ubicaciones %}
+                            <option value="{{ ub.id_ubicacion }}">{{ ub.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Hacia</label>
+                        <select class="form-select" name="id_ubicacion_destino" required>
+                            {% for ub in ubicaciones %}
+                            <option value="{{ ub.id_ubicacion }}">{{ ub.nombre }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Cantidad (pares)</label>
+                        <input type="number" class="form-control" name="cantidad_pares" min="1" required>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="trasladarStock()">
+                    <i class="bi bi-arrow-right"></i> Trasladar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function verDetalle(idVariante) {
+    window.location.href = `/inventario/detalle/${idVariante}`;
+}
+
+function ingresarStock() {
+    const form = document.getElementById('formIngresarStock');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    fetch('/api/inventario/ingresar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+
+function trasladarStock() {
+    const form = document.getElementById('formTrasladar');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    if (data.id_ubicacion_origen === data.id_ubicacion_destino) {
+        alert('Las ubicaciones origen y destino no pueden ser iguales');
+        return;
+    }
+
+    fetch('/api/inventario/trasladar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+</script>
+{% endblock %}

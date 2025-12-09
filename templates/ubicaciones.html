@@ -1,0 +1,128 @@
+{% extends "base.html" %}
+
+{% block title %}Ubicaciones - Sistema Calzado{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-geo-alt"></i> Gestión de Ubicaciones</h1>
+        <p class="text-muted">Administra tus almacenes y puntos de venta</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaUbicacion">
+        <i class="bi bi-plus-circle"></i> Nueva Ubicación
+    </button>
+</div>
+
+<div class="row g-4">
+    {% for ubicacion in ubicaciones %}
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header {% if ubicacion.tipo == 'produccion' %}bg-success{% elif ubicacion.tipo == 'almacen' %}bg-primary{% else %}bg-secondary{% endif %} text-white">
+                <h5 class="mb-0">
+                    <i class="bi bi-{% if ubicacion.tipo == 'produccion' %}house{% else %}building{% endif %}"></i>
+                    {{ ubicacion.nombre }}
+                </h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-3">{{ ubicacion.descripcion }}</p>
+
+                <div class="row text-center mb-3">
+                    <div class="col-6">
+                        <div class="stat-label">Stock General</div>
+                        <div class="stat-value text-warning" style="font-size: 1.5rem;">
+                            {{ ubicacion.stock_general }}
+                        </div>
+                    </div>
+                    <div class="col-6">
+                        <div class="stat-label">Pedidos</div>
+                        <div class="stat-value text-info" style="font-size: 1.5rem;">
+                            {{ ubicacion.stock_pedidos }}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="d-flex gap-2">
+                    <button class="btn btn-sm btn-outline-primary flex-fill">
+                        <i class="bi bi-eye"></i> Ver Stock
+                    </button>
+                    <button class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil"></i>
+                    </button>
+                </div>
+
+                {% if ubicacion.activo %}
+                    <span class="badge bg-success mt-2">Activa</span>
+                {% else %}
+                    <span class="badge bg-secondary mt-2">Inactiva</span>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+
+<!-- Modal: Nueva Ubicación -->
+<div class="modal fade" id="modalNuevaUbicacion" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nueva Ubicación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuevaUbicacion">
+                    <div class="mb-3">
+                        <label class="form-label">Nombre</label>
+                        <input type="text" class="form-control" name="nombre" required>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Tipo</label>
+                        <select class="form-select" name="tipo" required>
+                            <option value="produccion">Producción</option>
+                            <option value="almacen">Almacén</option>
+                            <option value="tienda">Tienda</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Descripción</label>
+                        <textarea class="form-control" name="descripcion" rows="3"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarUbicacion()">
+                    <i class="bi bi-save"></i> Guardar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function guardarUbicacion() {
+    const form = document.getElementById('formNuevaUbicacion');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    fetch('/api/ubicaciones/crear', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+</script>
+{% endblock %}
