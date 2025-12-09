@@ -69,6 +69,37 @@ def migrar_modelo_v2(db_path='calzado.db'):
         print("FASE 2: Crear nuevas tablas con diseño correcto")
         print("="*80)
 
+        # Tabla 0: UBICACIONES (tabla base necesaria)
+        print("\n📋 Creando tabla: ubicaciones")
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS ubicaciones (
+                id_ubicacion INTEGER PRIMARY KEY AUTOINCREMENT,
+                nombre TEXT UNIQUE NOT NULL,
+                direccion TEXT,
+                tipo TEXT,
+                activo INTEGER DEFAULT 1,
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            )
+        ''')
+        print("✅ Tabla 'ubicaciones' creada")
+
+        # Insertar ubicaciones por defecto si no existen
+        ubicaciones_default = [
+            ('Casa', 'Lugar de producción', 'Producción'),
+            ('Tienda Principal', 'Tienda principal de ventas', 'Venta'),
+            ('Tienda Secundaria', 'Tienda secundaria', 'Venta')
+        ]
+
+        for nombre, direccion, tipo in ubicaciones_default:
+            try:
+                cursor.execute('''
+                    INSERT INTO ubicaciones (nombre, direccion, tipo)
+                    VALUES (?, ?, ?)
+                ''', (nombre, direccion, tipo))
+                print(f"   ✅ Ubicación '{nombre}' insertada")
+            except sqlite3.IntegrityError:
+                print(f"   ⚠️  Ubicación '{nombre}' ya existe")
+
         # Tabla 1: VARIANTES_BASE (Catálogo de modelos)
         print("\n📋 Creando tabla: variantes_base")
         cursor.execute('''
