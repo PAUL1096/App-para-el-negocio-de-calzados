@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% block title %}Ventas - Sistema Calzado{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-cart-check"></i> Registro de Ventas</h1>
+    <p class="text-muted">Sistema nuevo vinculado a preparaciones</p>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Fecha/Hora</th>
+                        <th>Cliente</th>
+                        <th>Producto</th>
+                        <th>Pares</th>
+                        <th>Docenas</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Día Venta</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for venta in ventas %}
+                    <tr>
+                        <td><strong>{{ venta.codigo_venta }}</strong></td>
+                        <td>
+                            {{ venta.fecha_venta }}<br>
+                            <small class="text-muted">{{ venta.hora_venta }}</small>
+                        </td>
+                        <td>{{ venta.cliente }}</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ venta.tipo }}</span><br>
+                            <small>{{ venta.codigo_producto }} - {{ venta.cuero }} {{ venta.color }}</small>
+                        </td>
+                        <td>{{ venta.cantidad_pares }}</td>
+                        <td>{{ "%.1f"|format(venta.cantidad_docenas) }}</td>
+                        <td><strong>${{ "%.2f"|format(venta.total_final) }}</strong></td>
+                        <td>
+                            {% if venta.estado_pago == 'pagado' %}
+                                <span class="badge bg-success">Pagado</span>
+                            {% else %}
+                                <span class="badge bg-warning">{{ venta.estado_pago }}</span>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-primary">{{ venta.dia_venta }}</span></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer text-muted">
+        Total: {{ ventas|length }} ventas (últimas 100)
+    </div>
+</div>
+{% endblock %}

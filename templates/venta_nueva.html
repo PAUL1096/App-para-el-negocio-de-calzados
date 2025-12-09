@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}Registrar Venta{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-cart-plus"></i> Registrar Venta</h1>
+    <p class="text-muted">Preparación #{{ preparacion.id_preparacion }} - {{ preparacion.dia_venta }}</p>
+</div>
+
+<form id="formVenta">
+    <input type="hidden" name="id_preparacion" value="{{ preparacion.id_preparacion }}">
+    <input type="hidden" name="codigo_venta" value="{{ codigo_venta }}">
+
+    <div class="row g-3">
+        <div class="col-md-6">
+            <label class="form-label">Cliente *</label>
+            <input type="text" class="form-control" name="cliente" required>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Destino</label>
+            <input type="text" class="form-control" name="destino">
+        </div>
+        <div class="col-md-12">
+            <label class="form-label">Variante *</label>
+            <select class="form-select" name="id_variante" id="selectVariante" required onchange="actualizarPrecio()">
+                <option value="">Seleccionar...</option>
+                {% for var in variantes_disponibles %}
+                <option value="{{ var.id_variante }}" data-precio="{{ var.precio_sugerido }}" data-disponible="{{ var.disponible }}">
+                    {{ var.codigo_producto }} - {{ var.cuero }} {{ var.color }} (Disponible: {{ var.disponible }} pares)
+                </option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Cantidad Pares *</label>
+            <input type="number" class="form-control" name="cantidad_pares" id="cantidad_pares" required min="1" onchange="calcularTotal()">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Precio Unitario *</label>
+            <input type="number" class="form-control" name="precio_unitario" id="precio_unitario" step="0.01" required onchange="calcularTotal()">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Descuento</label>
+            <input type="number" class="form-control" name="descuento" id="descuento" step="0.01" value="0" onchange="calcularTotal()">
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Método de Pago</label>
+            <select class="form-select" name="metodo_pago">
+                <option value="efectivo">Efectivo</option>
+                <option value="transferencia">Transferencia</option>
+                <option value="tarjeta">Tarjeta</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label class="form-label">Estado de Pago</label>
+            <select class="form-select" name="estado_pago">
+                <option value="pagado">Pagado</option>
+                <option value="parcial">Parcial</option>
+                <option value="pendiente">Pendiente</option>
+            </select>
+        </div>
+        <div class="col-md-12">
+            <div class="alert alert-success">
+                <h5>Total: $<span id="total">0.00</span></h5>
+            </div>
+        </div>
+    </div>
+
+    <div class="text-end mt-3">
+        <a href="/preparaciones/{{ preparacion.id_preparacion }}" class="btn btn-secondary">Cancelar</a>
+        <button type="button" class="btn btn-primary" onclick="guardarVenta()">
+            <i class="bi bi-save"></i> Registrar Venta
+        </button>
+    </div>
+</form>
+
+<script>
+function actualizarPrecio() {
+    const select = document.getElementById('selectVariante');
+    const option = select.options[select.selectedIndex];
+    if (option.value) {
+        document.getElementById('precio_unitario').value = option.dataset.precio;
+        calcularTotal();
+    }
+}
+
+function calcularTotal() {
+    const cantidad = parseFloat(document.getElementById('cantidad_pares').value) || 0;
+    const precio = parseFloat(document.getElementById('precio_unitario').value) || 0;
+    const descuento = parseFloat(document.getElementById('descuento').value) || 0;
+    const total = (cantidad * precio) - descuento;
+    document.getElementById('total').textContent = total.toFixed(2);
+}
+
+function guardarVenta() {
+    const form = document.getElementById('formVenta');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    fetch('/api/ventas/registrar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message + '\nCódigo: ' + data.codigo_venta);
+            window.location.href = '/preparaciones/{{ preparacion.id_preparacion }}';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    });
+}
+</script>
+{% endblock %}
