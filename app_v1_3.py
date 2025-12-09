@@ -925,22 +925,59 @@ def crear_variante():
 @app.route('/api/variantes/<int:id_variante>', methods=['GET'])
 def obtener_variante(id_variante):
     """API para obtener detalles de una variante"""
-    conn = get_db()
-    cursor = conn.cursor()
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
 
-    cursor.execute('''
-        SELECT v.*, pb.tipo, pb.nombre
-        FROM variantes v
-        JOIN productos_base pb ON v.codigo_producto = pb.codigo_producto
-        WHERE v.id_variante = ?
-    ''', (id_variante,))
-    variante = cursor.fetchone()
+        cursor.execute('''
+            SELECT v.*, pb.tipo, pb.nombre
+            FROM variantes v
+            JOIN productos_base pb ON v.codigo_producto = pb.codigo_producto
+            WHERE v.id_variante = ?
+        ''', (id_variante,))
+        variante = cursor.fetchone()
 
-    conn.close()
+        conn.close()
 
-    if variante:
-        return jsonify(dict(variante))
-    return jsonify({'error': 'Variante no encontrada'}), 404
+        if variante:
+            return jsonify({'success': True, 'variante': dict(variante)})
+        return jsonify({'success': False, 'error': 'Variante no encontrada'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/variantes/<int:id_variante>/editar', methods=['PUT'])
+def editar_variante(id_variante):
+    """API para editar variante"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            UPDATE variantes
+            SET cuero = ?, color = ?, serie_tallas = ?, pares_por_docena = ?,
+                costo_unitario = ?, precio_sugerido = ?, observaciones = ?, activo = ?
+            WHERE id_variante = ?
+        ''', (
+            data['cuero'],
+            data['color'],
+            data['serie_tallas'],
+            data.get('pares_por_docena', 12),
+            data['costo_unitario'],
+            data['precio_sugerido'],
+            data.get('observaciones', ''),
+            data.get('activo', 1),
+            id_variante
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Variante actualizada exitosamente'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 @app.route('/inventario')
 def inventario():
