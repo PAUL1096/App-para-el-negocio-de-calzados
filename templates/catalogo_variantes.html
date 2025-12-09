@@ -1,0 +1,266 @@
+{% extends "base.html" %}
+{% block title %}Catálogo de Variantes - Sistema Calzado{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-box"></i> Catálogo de Variantes Base</h1>
+        <p class="text-muted">Modelos/Plantillas de calzado que produces</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaVarianteBase">
+        <i class="bi bi-plus-circle"></i> Nueva Variante Base
+    </button>
+</div>
+
+<!-- Tabla de variantes base -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Código Interno</th>
+                        <th>Tipo Calzado</th>
+                        <th>Tipo Horma</th>
+                        <th>Segmento</th>
+                        <th>Descripción</th>
+                        <th>Fecha Creación</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for variante in variantes %}
+                    <tr>
+                        <td><small class="text-muted">#{{ variante.id_variante_base }}</small></td>
+                        <td><strong><span class="badge bg-primary">{{ variante.codigo_interno }}</span></strong></td>
+                        <td>{{ variante.tipo_calzado }}</td>
+                        <td>{{ variante.tipo_horma }}</td>
+                        <td><span class="badge bg-info">{{ variante.segmento }}</span></td>
+                        <td><small>{{ variante.descripcion or '-' }}</small></td>
+                        <td><small class="text-muted">{{ variante.fecha_creacion[:10] }}</small></td>
+                        <td>
+                            {% if variante.activo == 1 %}
+                                <span class="badge bg-success">Activo</span>
+                            {% else %}
+                                <span class="badge bg-secondary">Inactivo</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="editarVarianteBase({{ variante.id_variante_base }})" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <a href="/produccion/nueva/{{ variante.id_variante_base }}" class="btn btn-outline-success" title="Producir">
+                                    <i class="bi bi-hammer"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer text-muted">
+        Total de variantes base: <strong>{{ variantes|length }}</strong>
+    </div>
+</div>
+
+<!-- Modal: Nueva Variante Base -->
+<div class="modal fade" id="modalNuevaVarianteBase" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nueva Variante Base</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuevaVarianteBase">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Código Interno *</label>
+                            <input type="text" class="form-control" name="codigo_interno" required
+                                   placeholder="Ej: M-CASUAL-01">
+                            <small class="text-muted">Tu nomenclatura única</small>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Calzado *</label>
+                            <input type="text" class="form-control" name="tipo_calzado" required
+                                   placeholder="Ej: Casual, Formal, Deportivo, Escolar" list="tipos_calzado">
+                            <datalist id="tipos_calzado">
+                                <option value="Casual">
+                                <option value="Formal">
+                                <option value="Deportivo">
+                                <option value="Escolar">
+                                <option value="Botín">
+                                <option value="Sandalia">
+                            </datalist>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Horma *</label>
+                            <input type="text" class="form-control" name="tipo_horma" required
+                                   placeholder="Ej: Americano, Punta Pala" list="tipos_horma">
+                            <datalist id="tipos_horma">
+                                <option value="Americano">
+                                <option value="Punta Pala">
+                                <option value="Punta Cuadrada">
+                                <option value="Punta Fina">
+                                <option value="Deportiva">
+                            </datalist>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Segmento *</label>
+                            <input type="text" class="form-control" name="segmento" required
+                                   placeholder="Ej: Adulto Caballero, Niño" list="segmentos">
+                            <datalist id="segmentos">
+                                <option value="Adulto Caballero">
+                                <option value="Niño">
+                                <option value="Dama">
+                                <option value="Niña">
+                            </datalist>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" name="descripcion" rows="2"
+                                      placeholder="Descripción del modelo..."></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarVarianteBase()">
+                    <i class="bi bi-save"></i> Guardar Variante
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Editar Variante Base -->
+<div class="modal fade" id="modalEditarVarianteBase" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Editar Variante Base</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarVarianteBase">
+                    <input type="hidden" id="edit_id_variante_base" name="id_variante_base">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Código Interno *</label>
+                            <input type="text" class="form-control" id="edit_codigo_interno" name="codigo_interno" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Calzado *</label>
+                            <input type="text" class="form-control" id="edit_tipo_calzado" name="tipo_calzado" required list="tipos_calzado">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Tipo de Horma *</label>
+                            <input type="text" class="form-control" id="edit_tipo_horma" name="tipo_horma" required list="tipos_horma">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Segmento *</label>
+                            <input type="text" class="form-control" id="edit_segmento" name="segmento" required list="segmentos">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Descripción</label>
+                            <textarea class="form-control" id="edit_descripcion" name="descripcion" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select" id="edit_activo" name="activo">
+                                <option value="1">Activo</option>
+                                <option value="0">Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="actualizarVarianteBase()">
+                    <i class="bi bi-save"></i> Actualizar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function guardarVarianteBase() {
+    const form = document.getElementById('formNuevaVarianteBase');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    fetch('/api/variantes-base/crear', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function editarVarianteBase(idVarianteBase) {
+    fetch(`/api/variantes-base/${idVarianteBase}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const variante = data.variante;
+
+                document.getElementById('edit_id_variante_base').value = variante.id_variante_base;
+                document.getElementById('edit_codigo_interno').value = variante.codigo_interno;
+                document.getElementById('edit_tipo_calzado').value = variante.tipo_calzado;
+                document.getElementById('edit_tipo_horma').value = variante.tipo_horma;
+                document.getElementById('edit_segmento').value = variante.segmento;
+                document.getElementById('edit_descripcion').value = variante.descripcion || '';
+                document.getElementById('edit_activo').value = variante.activo;
+
+                const modal = new bootstrap.Modal(document.getElementById('modalEditarVarianteBase'));
+                modal.show();
+            } else {
+                alert('Error al cargar la variante: ' + data.error);
+            }
+        })
+        .catch(error => alert('Error: ' + error));
+}
+
+function actualizarVarianteBase() {
+    const form = document.getElementById('formEditarVarianteBase');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    const idVarianteBase = data.id_variante_base;
+
+    fetch(`/api/variantes-base/${idVarianteBase}/editar`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+</script>
+{% endblock %}
