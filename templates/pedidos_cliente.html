@@ -72,14 +72,7 @@
                         <td>{{ pedido.cliente }}</td>
                         <td>{{ pedido.fecha_pedido }}</td>
                         <td>
-                            {% set dias_restantes = (pedido.fecha_entrega_estimada|string|strptime('%Y-%m-%d') - now()).days %}
-                            {% if dias_restantes < 0 and pedido.estado != 'entregado' %}
-                                <span class="badge bg-danger">VENCIDO</span>
-                            {% elif dias_restantes <= 3 and pedido.estado != 'entregado' %}
-                                <span class="badge bg-warning">{{ pedido.fecha_entrega_estimada }}</span>
-                            {% else %}
-                                {{ pedido.fecha_entrega_estimada }}
-                            {% endif %}
+                            <span class="text-muted">{{ pedido.fecha_entrega_estimada }}</span>
                         </td>
                         <td><strong>{{ pedido.total_pares }}</strong> pares</td>
                         <td>
