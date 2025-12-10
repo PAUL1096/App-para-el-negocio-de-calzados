@@ -57,6 +57,14 @@ def migrar_modelo_v2(db_path='calzado.db'):
 
         for tabla in tablas_a_renombrar:
             try:
+                # Verificar si la tabla _old ya existe de una migración anterior
+                cursor.execute(f"SELECT name FROM sqlite_master WHERE type='table' AND name='{tabla}_old'")
+                if cursor.fetchone():
+                    print(f"⚠️  Tabla '{tabla}_old' ya existe, eliminándola...")
+                    cursor.execute(f"DROP TABLE {tabla}_old")
+                    print(f"   ✅ Tabla '{tabla}_old' eliminada")
+
+                # Ahora renombrar la tabla actual
                 cursor.execute(f"ALTER TABLE {tabla} RENAME TO {tabla}_old")
                 print(f"✅ Tabla '{tabla}' respaldada como '{tabla}_old'")
             except sqlite3.OperationalError as e:
