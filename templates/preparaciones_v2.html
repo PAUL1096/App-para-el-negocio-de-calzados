@@ -1,0 +1,69 @@
+{% extends "base.html" %}
+{% block title %}Preparaciones - Sistema Calzado v2.0{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-box-seam"></i> Preparaciones de Mercadería</h1>
+        <p class="text-muted">Preparar productos del inventario para ventas</p>
+    </div>
+    <a href="/preparaciones/nueva" class="btn btn-primary">
+        <i class="bi bi-plus-circle"></i> Nueva Preparación
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Fecha</th>
+                        <th>Día Venta</th>
+                        <th>Origen</th>
+                        <th>Productos</th>
+                        <th>Total Pares</th>
+                        <th>Vendido</th>
+                        <th>Pendiente</th>
+                        <th>Estado</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prep in preparaciones %}
+                    <tr>
+                        <td><strong>{{ prep.codigo_preparacion }}</strong></td>
+                        <td>{{ prep.fecha_preparacion }}</td>
+                        <td><span class="badge bg-primary">{{ prep.dia_venta }}</span></td>
+                        <td>{{ prep.ubicacion_origen }}</td>
+                        <td>{{ prep.total_productos or 0 }}</td>
+                        <td>{{ prep.total_pares or 0 }}</td>
+                        <td>{{ prep.total_vendido or 0 }}</td>
+                        <td><strong>{{ prep.pendiente_vender or 0 }}</strong></td>
+                        <td>
+                            {% if prep.estado == 'pendiente' %}
+                                <span class="badge bg-warning">Pendiente</span>
+                            {% elif prep.estado == 'en_proceso' %}
+                                <span class="badge bg-info">En Proceso</span>
+                            {% else %}
+                                <span class="badge bg-success">Finalizado</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if prep.pendiente_vender > 0 %}
+                            <a href="/ventas/nueva/{{ prep.id_preparacion }}" class="btn btn-sm btn-success">
+                                <i class="bi bi-cart-plus"></i> Vender
+                            </a>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer text-muted">
+        Total: <strong>{{ preparaciones|length }}</strong> preparaciones
+    </div>
+</div>
+{% endblock %}

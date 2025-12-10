@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}Nueva Preparación{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-box-seam"></i> Nueva Preparación</h1>
+    <p class="text-muted">Seleccionar productos del inventario</p>
+</div>
+
+<div class="alert alert-info">
+    <strong>Nota:</strong> Esta es una versión simplificada. Selecciona productos del inventario para preparar para ventas.
+    Para funcionalidad completa, necesitarás agregar un selector dinámico de productos.
+</div>
+
+<div class="card">
+    <div class="card-body">
+        <p class="text-muted">Ir a <a href="/inventario">Inventario</a> → Ver stock disponible</p>
+        <p class="text-muted">Ir a <a href="/preparaciones">Preparaciones</a> → Ver preparaciones existentes</p>
+    </div>
+</div>
+
+<div class="alert alert-warning mt-3">
+    <i class="bi bi-info-circle"></i> <strong>Módulo en desarrollo:</strong> Template completo pendiente. Los endpoints API están listos en <code>app_v2.py</code>.
+</div>
+
+<a href="/preparaciones" class="btn btn-secondary">← Volver a Preparaciones</a>
+{% endblock %}

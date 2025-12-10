@@ -1,0 +1,114 @@
+{% extends "base.html" %}
+{% block title %}Ventas - Sistema Calzado v2.0{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-cart-check"></i> Registro de Ventas</h1>
+        <p class="text-muted">Ventas desde preparaciones</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPreparacion">
+        <i class="bi bi-plus-circle"></i> Nueva Venta
+    </button>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Producto</th>
+                        <th>Pares</th>
+                        <th>Precio Unit.</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for venta in ventas %}
+                    <tr>
+                        <td><strong>{{ venta.codigo_venta }}</strong></td>
+                        <td>{{ venta.fecha_venta }}</td>
+                        <td>{{ venta.cliente }}</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ venta.codigo_interno }}</span><br>
+                            <small>{{ venta.cuero }} {{ venta.color_cuero }}</small>
+                        </td>
+                        <td>{{ venta.cantidad_pares }}</td>
+                        <td>${{ "%.2f"|format(venta.precio_unitario) }}</td>
+                        <td><strong>${{ "%.2f"|format(venta.total_final) }}</strong></td>
+                        <td>
+                            {% if venta.estado_pago == 'pagado' %}
+                                <span class="badge bg-success">Pagado</span>
+                            {% else %}
+                                <span class="badge bg-warning">{{ venta.estado_pago }}</span>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer text-muted">
+        Total: {{ ventas|length }} ventas
+    </div>
+</div>
+
+<!-- Modal de preparaciones disponibles (del template ventas.html anterior) -->
+<div class="modal fade" id="modalSeleccionarPreparacion" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-box-seam"></i> Seleccionar Preparación</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p class="text-muted mb-3">Selecciona una preparación con stock disponible:</p>
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>Código</th>
+                                <th>Fecha</th>
+                                <th>Día Venta</th>
+                                <th>Pares Disponibles</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if preparaciones_disponibles %}
+                                {% for prep in preparaciones_disponibles %}
+                                <tr>
+                                    <td><strong>{{ prep.codigo_preparacion }}</strong></td>
+                                    <td>{{ prep.fecha_preparacion }}</td>
+                                    <td><span class="badge bg-primary">{{ prep.dia_venta }}</span></td>
+                                    <td><span class="badge bg-success">{{ prep.pendiente_vender }} pares</span></td>
+                                    <td>
+                                        <a href="/ventas/nueva/{{ prep.id_preparacion }}" class="btn btn-sm btn-primary">
+                                            <i class="bi bi-cart-plus"></i> Registrar Venta
+                                        </a>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="5" class="text-center text-muted py-4">
+                                        No hay preparaciones con stock disponible.<br>
+                                        <a href="/preparaciones/nueva" class="btn btn-sm btn-primary mt-2">
+                                            <i class="bi bi-plus-circle"></i> Crear Preparación
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

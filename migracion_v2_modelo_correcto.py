@@ -157,7 +157,23 @@ def migrar_modelo_v2(db_path='calzado.db'):
         ''')
         print("✅ Tabla 'inventario' creada")
 
-        # Tabla 4: PREPARACIONES_DETALLE (actualizado)
+        # Tabla 4: PREPARACIONES (tabla maestra)
+        print("\n📋 Creando tabla: preparaciones")
+        cursor.execute('''
+            CREATE TABLE IF NOT EXISTS preparaciones (
+                id_preparacion INTEGER PRIMARY KEY AUTOINCREMENT,
+                codigo_preparacion TEXT UNIQUE NOT NULL,
+                id_ubicacion_origen INTEGER NOT NULL,
+                dia_venta TEXT NOT NULL,
+                fecha_preparacion DATE DEFAULT (DATE('now')),
+                observaciones TEXT,
+                estado TEXT DEFAULT 'pendiente',
+                FOREIGN KEY (id_ubicacion_origen) REFERENCES ubicaciones(id_ubicacion)
+            )
+        ''')
+        print("✅ Tabla 'preparaciones' creada")
+
+        # Tabla 5: PREPARACIONES_DETALLE (actualizado)
         print("\n📋 Creando tabla: preparaciones_detalle")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS preparaciones_detalle (
@@ -176,7 +192,7 @@ def migrar_modelo_v2(db_path='calzado.db'):
         ''')
         print("✅ Tabla 'preparaciones_detalle' creada")
 
-        # Tabla 5: VENTAS_V2 (actualizado)
+        # Tabla 6: VENTAS_V2 (actualizado)
         print("\n📋 Creando tabla: ventas_v2")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS ventas_v2 (
@@ -202,7 +218,7 @@ def migrar_modelo_v2(db_path='calzado.db'):
         ''')
         print("✅ Tabla 'ventas_v2' creada")
 
-        # Tabla 6: PEDIDOS_DETALLE (actualizado)
+        # Tabla 7: PEDIDOS_DETALLE (actualizado)
         print("\n📋 Creando tabla: pedidos_detalle")
         cursor.execute('''
             CREATE TABLE IF NOT EXISTS pedidos_detalle (

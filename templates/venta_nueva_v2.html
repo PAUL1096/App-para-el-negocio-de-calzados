@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Nueva Venta{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-cart-plus"></i> Registrar Venta</h1>
+    <p class="text-muted">Preparación: <strong>{{ preparacion.codigo_preparacion }}</strong></p>
+</div>
+
+<div class="card mb-3">
+    <div class="card-header"><h5>Productos Disponibles</h5></div>
+    <div class="card-body p-0">
+        <table class="table mb-0">
+            <thead>
+                <tr>
+                    <th>Código</th>
+                    <th>Producto</th>
+                    <th>Disponible</th>
+                    <th>Precio</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for prod in productos_disponibles %}
+                <tr>
+                    <td>{{ prod.codigo_interno }}</td>
+                    <td>{{ prod.cuero }} {{ prod.color_cuero }}</td>
+                    <td>{{ prod.disponible }} pares</td>
+                    <td>${{ "%.2f"|format(prod.precio_sugerido) }}</td>
+                </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</div>
+
+<div class="alert alert-warning">
+    <i class="bi bi-info-circle"></i> <strong>Módulo en desarrollo:</strong> Formulario completo pendiente. Endpoints API listos en <code>app_v2.py</code>.
+</div>
+
+<a href="/ventas" class="btn btn-secondary">← Volver a Ventas</a>
+{% endblock %}
