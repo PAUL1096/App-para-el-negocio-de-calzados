@@ -3,38 +3,326 @@
 {% block content %}
 <div class="page-header">
     <h1><i class="bi bi-cart-plus"></i> Registrar Venta</h1>
-    <p class="text-muted">Preparación: <strong>{{ preparacion.codigo_preparacion }}</strong></p>
+    <p class="text-muted">Preparación: <strong>{{ preparacion.codigo_preparacion }}</strong> - {{ preparacion.dia_venta }}</p>
 </div>
 
-<div class="card mb-3">
-    <div class="card-header"><h5>Productos Disponibles</h5></div>
-    <div class="card-body p-0">
-        <table class="table mb-0">
-            <thead>
-                <tr>
-                    <th>Código</th>
-                    <th>Producto</th>
-                    <th>Disponible</th>
-                    <th>Precio</th>
-                </tr>
-            </thead>
-            <tbody>
-                {% for prod in productos_disponibles %}
-                <tr>
-                    <td>{{ prod.codigo_interno }}</td>
-                    <td>{{ prod.cuero }} {{ prod.color_cuero }}</td>
-                    <td>{{ prod.disponible }} pares</td>
-                    <td>${{ "%.2f"|format(prod.precio_sugerido) }}</td>
-                </tr>
-                {% endfor %}
-            </tbody>
-        </table>
+<div class="row">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0">Datos de la Venta</h5>
+            </div>
+            <div class="card-body">
+                <form id="formVenta">
+                    <input type="hidden" id="id_preparacion" value="{{ preparacion.id_preparacion }}">
+                    <input type="hidden" id="codigo_venta" value="{{ codigo_venta }}">
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Código de Venta</label>
+                            <input type="text" class="form-control" value="{{ codigo_venta }}" disabled>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="cliente" class="form-label">Cliente *</label>
+                            <input type="text" class="form-control" id="cliente" name="cliente" required
+                                   placeholder="Nombre del cliente">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="id_producto" class="form-label">Producto *</label>
+                        <select class="form-select" id="id_producto" name="id_producto" required>
+                            <option value="">-- Seleccionar producto --</option>
+                            {% for prod in productos_disponibles %}
+                            <option value="{{ prod.id_producto }}"
+                                    data-disponible="{{ prod.disponible }}"
+                                    data-precio="{{ prod.precio_sugerido }}"
+                                    data-cuero="{{ prod.cuero }}"
+                                    data-color="{{ prod.color_cuero }}"
+                                    data-suela="{{ prod.suela }}"
+                                    data-serie="{{ prod.serie_tallas }}"
+                                    data-codigo="{{ prod.codigo_interno }}">
+                                {{ prod.codigo_interno }} - {{ prod.cuero }} {{ prod.color_cuero }} - {{ prod.suela }}
+                                ({{ prod.disponible }} pares disponibles)
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-4">
+                            <label for="cantidad_pares" class="form-label">Cantidad (pares) *</label>
+                            <input type="number" class="form-control" id="cantidad_pares" name="cantidad_pares"
+                                   min="1" required disabled>
+                            <small class="text-muted">Disponible: <span id="stock_disponible">0</span> pares</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="precio_unitario" class="form-label">Precio Unitario *</label>
+                            <input type="number" class="form-control" id="precio_unitario" name="precio_unitario"
+                                   step="0.01" min="0" required disabled>
+                        </div>
+                        <div class="col-md-4">
+                            <label for="descuento" class="form-label">Descuento</label>
+                            <input type="number" class="form-control" id="descuento" name="descuento"
+                                   step="0.01" min="0" value="0">
+                        </div>
+                    </div>
+
+                    <div class="row mb-3">
+                        <div class="col-md-6">
+                            <label for="metodo_pago" class="form-label">Método de Pago</label>
+                            <select class="form-select" id="metodo_pago" name="metodo_pago">
+                                <option value="">-- Seleccionar --</option>
+                                <option value="efectivo">Efectivo</option>
+                                <option value="transferencia">Transferencia</option>
+                                <option value="tarjeta">Tarjeta</option>
+                                <option value="mixto">Mixto</option>
+                            </select>
+                        </div>
+                        <div class="col-md-6">
+                            <label for="estado_pago" class="form-label">Estado de Pago</label>
+                            <select class="form-select" id="estado_pago" name="estado_pago">
+                                <option value="pendiente">Pendiente</option>
+                                <option value="pagado">Pagado</option>
+                                <option value="parcial">Parcial</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label for="observaciones" class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones" name="observaciones" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header bg-secondary text-white">
+                <h5 class="mb-0">Resumen</h5>
+            </div>
+            <div class="card-body">
+                <div id="producto-detalle" class="mb-3" style="display: none;">
+                    <h6 class="text-muted">Producto Seleccionado:</h6>
+                    <p class="mb-1"><strong id="detalle-codigo"></strong></p>
+                    <p class="mb-1 small text-muted">
+                        Cuero: <span id="detalle-cuero"></span><br>
+                        Color: <span id="detalle-color"></span><br>
+                        Suela: <span id="detalle-suela"></span><br>
+                        Serie: <span id="detalle-serie"></span>
+                    </p>
+                    <hr>
+                </div>
+
+                <table class="table table-sm">
+                    <tr>
+                        <td>Cantidad:</td>
+                        <td class="text-end"><strong><span id="resumen-cantidad">0</span> pares</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Docenas:</td>
+                        <td class="text-end"><span id="resumen-docenas">0.00</span></td>
+                    </tr>
+                    <tr>
+                        <td>Precio unitario:</td>
+                        <td class="text-end">S/ <span id="resumen-precio">0.00</span></td>
+                    </tr>
+                    <tr class="table-light">
+                        <td><strong>Subtotal:</strong></td>
+                        <td class="text-end"><strong>S/ <span id="resumen-subtotal">0.00</span></strong></td>
+                    </tr>
+                    <tr>
+                        <td>Descuento:</td>
+                        <td class="text-end text-danger">- S/ <span id="resumen-descuento">0.00</span></td>
+                    </tr>
+                    <tr class="table-success">
+                        <td><strong>TOTAL:</strong></td>
+                        <td class="text-end"><h4 class="mb-0">S/ <span id="resumen-total">0.00</span></h4></td>
+                    </tr>
+                </table>
+            </div>
+        </div>
+
+        {% if productos_disponibles %}
+        <div class="card mt-3">
+            <div class="card-header">
+                <h6 class="mb-0">Productos en esta Preparación</h6>
+            </div>
+            <div class="card-body p-0">
+                <div class="list-group list-group-flush">
+                    {% for prod in productos_disponibles %}
+                    <div class="list-group-item">
+                        <div class="d-flex justify-content-between align-items-start">
+                            <div>
+                                <strong>{{ prod.codigo_interno }}</strong><br>
+                                <small class="text-muted">{{ prod.cuero }} {{ prod.color_cuero }}</small>
+                            </div>
+                            <span class="badge bg-success">{{ prod.disponible }} pares</span>
+                        </div>
+                    </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+        {% endif %}
     </div>
 </div>
 
-<div class="alert alert-warning">
-    <i class="bi bi-info-circle"></i> <strong>Módulo en desarrollo:</strong> Formulario completo pendiente. Endpoints API listos en <code>app_v2.py</code>.
+<div class="d-flex justify-content-between mt-4">
+    <a href="/ventas" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Cancelar
+    </a>
+    <button type="button" class="btn btn-success btn-lg" id="btnGuardarVenta">
+        <i class="bi bi-check-circle"></i> Registrar Venta
+    </button>
 </div>
 
-<a href="/ventas" class="btn btn-secondary">← Volver a Ventas</a>
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectProducto = document.getElementById('id_producto');
+    const inputCantidad = document.getElementById('cantidad_pares');
+    const inputPrecio = document.getElementById('precio_unitario');
+    const inputDescuento = document.getElementById('descuento');
+
+    // Al seleccionar producto
+    selectProducto.addEventListener('change', function() {
+        const option = this.options[this.selectedIndex];
+
+        if (this.value) {
+            const disponible = parseInt(option.dataset.disponible);
+            const precio = parseFloat(option.dataset.precio);
+
+            // Habilitar campos
+            inputCantidad.disabled = false;
+            inputPrecio.disabled = false;
+
+            // Configurar valores
+            inputCantidad.max = disponible;
+            inputCantidad.value = Math.min(disponible, 12); // Por defecto 1 docena
+            inputPrecio.value = precio.toFixed(2);
+
+            document.getElementById('stock_disponible').textContent = disponible;
+
+            // Mostrar detalle del producto
+            document.getElementById('producto-detalle').style.display = 'block';
+            document.getElementById('detalle-codigo').textContent = option.dataset.codigo;
+            document.getElementById('detalle-cuero').textContent = option.dataset.cuero;
+            document.getElementById('detalle-color').textContent = option.dataset.color;
+            document.getElementById('detalle-suela').textContent = option.dataset.suela;
+            document.getElementById('detalle-serie').textContent = option.dataset.serie;
+
+            actualizarResumen();
+        } else {
+            inputCantidad.disabled = true;
+            inputPrecio.disabled = true;
+            inputCantidad.value = '';
+            inputPrecio.value = '';
+            document.getElementById('producto-detalle').style.display = 'none';
+            actualizarResumen();
+        }
+    });
+
+    // Actualizar resumen al cambiar valores
+    inputCantidad.addEventListener('input', actualizarResumen);
+    inputPrecio.addEventListener('input', actualizarResumen);
+    inputDescuento.addEventListener('input', actualizarResumen);
+
+    function actualizarResumen() {
+        const cantidad = parseInt(inputCantidad.value) || 0;
+        const precio = parseFloat(inputPrecio.value) || 0;
+        const descuento = parseFloat(inputDescuento.value) || 0;
+
+        const docenas = (cantidad / 12).toFixed(2);
+        const subtotal = cantidad * precio;
+        const total = subtotal - descuento;
+
+        document.getElementById('resumen-cantidad').textContent = cantidad;
+        document.getElementById('resumen-docenas').textContent = docenas;
+        document.getElementById('resumen-precio').textContent = precio.toFixed(2);
+        document.getElementById('resumen-subtotal').textContent = subtotal.toFixed(2);
+        document.getElementById('resumen-descuento').textContent = descuento.toFixed(2);
+        document.getElementById('resumen-total').textContent = total.toFixed(2);
+    }
+
+    // Guardar venta
+    document.getElementById('btnGuardarVenta').addEventListener('click', function() {
+        const idProducto = document.getElementById('id_producto').value;
+        const cliente = document.getElementById('cliente').value.trim();
+        const cantidad = parseInt(inputCantidad.value) || 0;
+        const precio = parseFloat(inputPrecio.value) || 0;
+
+        // Validaciones
+        if (!idProducto) {
+            alert('Por favor selecciona un producto');
+            return;
+        }
+        if (!cliente) {
+            alert('Por favor ingresa el nombre del cliente');
+            return;
+        }
+        if (cantidad <= 0) {
+            alert('La cantidad debe ser mayor a 0');
+            return;
+        }
+        if (precio <= 0) {
+            alert('El precio debe ser mayor a 0');
+            return;
+        }
+
+        // Validar que no exceda stock
+        const option = selectProducto.options[selectProducto.selectedIndex];
+        const disponible = parseInt(option.dataset.disponible);
+        if (cantidad > disponible) {
+            alert(`La cantidad no puede superar el stock disponible (${disponible} pares)`);
+            return;
+        }
+
+        // Preparar datos
+        const data = {
+            codigo_venta: document.getElementById('codigo_venta').value,
+            id_preparacion: parseInt(document.getElementById('id_preparacion').value),
+            id_producto: parseInt(idProducto),
+            cliente: cliente,
+            cantidad_pares: cantidad,
+            pares_por_docena: 12,
+            precio_unitario: precio,
+            descuento: parseFloat(inputDescuento.value) || 0,
+            estado_pago: document.getElementById('estado_pago').value,
+            metodo_pago: document.getElementById('metodo_pago').value,
+            observaciones: document.getElementById('observaciones').value
+        };
+
+        // Enviar petición
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Registrando...';
+
+        fetch('/api/ventas/registrar', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert(`✅ Venta registrada exitosamente\nCódigo: ${result.codigo_venta}`);
+                window.location.href = '/ventas';
+            } else {
+                alert('❌ Error: ' + result.error);
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-check-circle"></i> Registrar Venta';
+            }
+        })
+        .catch(error => {
+            alert('❌ Error al registrar venta: ' + error);
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-check-circle"></i> Registrar Venta';
+        });
+    });
+});
+</script>
+
 {% endblock %}
