@@ -15,8 +15,9 @@ DATABASE = 'calzado.db'
 
 def get_db():
     """Obtiene conexión a la base de datos"""
-    conn = sqlite3.connect(DATABASE)
+    conn = sqlite3.connect(DATABASE, timeout=30.0)  # 30 segundos de timeout
     conn.row_factory = sqlite3.Row
+    conn.execute('PRAGMA journal_mode=WAL')  # Write-Ahead Logging para mejor concurrencia
     return conn
 
 # ============================================================================
