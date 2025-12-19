@@ -601,17 +601,27 @@ def venta_nueva(id_preparacion):
 @app.route('/api/ventas/registrar', methods=['POST'])
 def registrar_venta():
     """API para registrar nueva venta"""
+    conn = None
     try:
         data = request.json
 
         conn = get_db()
         cursor = conn.cursor()
 
-        # Generar código de venta único (al momento de guardar, no al cargar página)
+        # Iniciar transacción INMEDIATA para evitar race conditions
+        cursor.execute('BEGIN IMMEDIATE')
+
+        # Generar código de venta único usando MAX en lugar de COUNT (más seguro)
         fecha_hoy = datetime.now().strftime('%Y%m%d')
-        cursor.execute('SELECT COUNT(*) as total FROM ventas_v2 WHERE DATE(fecha_venta) = DATE(?)', (datetime.now(),))
-        num_ventas_hoy = cursor.fetchone()['total'] + 1
-        codigo_venta = f"V{fecha_hoy}-{num_ventas_hoy:03d}"
+        cursor.execute('''
+            SELECT COALESCE(MAX(CAST(SUBSTR(codigo_venta, 11) AS INTEGER)), 0) as ultimo
+            FROM ventas_v2
+            WHERE codigo_venta LIKE ?
+        ''', (f"V{fecha_hoy}-%",))
+
+        ultimo_numero = cursor.fetchone()['ultimo']
+        nuevo_numero = ultimo_numero + 1
+        codigo_venta = f"V{fecha_hoy}-{nuevo_numero:03d}"
 
         cantidad_docenas = data['cantidad_pares'] / data.get('pares_por_docena', 12)
         subtotal = data['cantidad_pares'] * data['precio_unitario']
@@ -657,6 +667,9 @@ def registrar_venta():
         })
 
     except Exception as e:
+        if conn:
+            conn.rollback()
+            conn.close()
         return jsonify({'success': False, 'error': str(e)}), 400
 
 # ============================================================================
