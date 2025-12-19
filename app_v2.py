@@ -592,18 +592,11 @@ def venta_nueva(id_preparacion):
 
     productos_disponibles = cursor.fetchall()
 
-    # Generar código de venta
-    fecha_hoy = datetime.now().strftime('%Y%m%d')
-    cursor.execute('SELECT COUNT(*) as total FROM ventas_v2 WHERE DATE(fecha_venta) = DATE(?)', (datetime.now(),))
-    num_ventas_hoy = cursor.fetchone()['total'] + 1
-    codigo_venta = f"V{fecha_hoy}-{num_ventas_hoy:03d}"
-
     conn.close()
 
     return render_template('venta_nueva_v2.html',
                          preparacion=preparacion,
-                         productos_disponibles=productos_disponibles,
-                         codigo_venta=codigo_venta)
+                         productos_disponibles=productos_disponibles)
 
 @app.route('/api/ventas/registrar', methods=['POST'])
 def registrar_venta():
@@ -613,6 +606,12 @@ def registrar_venta():
 
         conn = get_db()
         cursor = conn.cursor()
+
+        # Generar código de venta único (al momento de guardar, no al cargar página)
+        fecha_hoy = datetime.now().strftime('%Y%m%d')
+        cursor.execute('SELECT COUNT(*) as total FROM ventas_v2 WHERE DATE(fecha_venta) = DATE(?)', (datetime.now(),))
+        num_ventas_hoy = cursor.fetchone()['total'] + 1
+        codigo_venta = f"V{fecha_hoy}-{num_ventas_hoy:03d}"
 
         cantidad_docenas = data['cantidad_pares'] / data.get('pares_por_docena', 12)
         subtotal = data['cantidad_pares'] * data['precio_unitario']
@@ -626,7 +625,7 @@ def registrar_venta():
              estado_pago, metodo_pago, observaciones)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
-            data['codigo_venta'],
+            codigo_venta,
             data['id_preparacion'],
             data['id_producto'],
             data['cliente'],
@@ -654,7 +653,7 @@ def registrar_venta():
         return jsonify({
             'success': True,
             'message': 'Venta registrada exitosamente',
-            'codigo_venta': data['codigo_venta']
+            'codigo_venta': codigo_venta
         })
 
     except Exception as e:

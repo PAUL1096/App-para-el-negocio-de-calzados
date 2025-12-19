@@ -15,12 +15,11 @@
             <div class="card-body">
                 <form id="formVenta">
                     <input type="hidden" id="id_preparacion" value="{{ preparacion.id_preparacion }}">
-                    <input type="hidden" id="codigo_venta" value="{{ codigo_venta }}">
 
                     <div class="row mb-3">
                         <div class="col-md-6">
                             <label class="form-label">Código de Venta</label>
-                            <input type="text" class="form-control" value="{{ codigo_venta }}" disabled>
+                            <input type="text" class="form-control" value="(se generará automáticamente)" disabled>
                         </div>
                         <div class="col-md-6">
                             <label for="cliente" class="form-label">Cliente *</label>
@@ -279,9 +278,8 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
-        // Preparar datos
+        // Preparar datos (codigo_venta se genera automáticamente en el servidor)
         const data = {
-            codigo_venta: document.getElementById('codigo_venta').value,
             id_preparacion: parseInt(document.getElementById('id_preparacion').value),
             id_producto: parseInt(idProducto),
             cliente: cliente,
