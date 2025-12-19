@@ -25,13 +25,35 @@
     {% endfor %}
 </div>
 
+<!-- Filtros -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="btn-group me-3" role="group">
+            <button type="button" class="btn btn-outline-success active" onclick="filtrarStock('todos')">
+                📦 Todos
+            </button>
+            <button type="button" class="btn btn-outline-success" onclick="filtrarStock('con-stock')">
+                ✓ Con Stock
+            </button>
+            <button type="button" class="btn btn-outline-danger" onclick="filtrarStock('sin-stock')">
+                ⚠️ Sin Stock (0 pares)
+            </button>
+            <button type="button" class="btn btn-outline-warning" onclick="filtrarStock('stock-bajo')">
+                ⚡ Stock Bajo (< 6 pares)
+            </button>
+        </div>
+        <span id="resultado-filtro">Mostrando todos los productos</span>
+    </div>
+</div>
+
 <!-- Tabla de inventario -->
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="tabla-inventario">
                 <thead>
                     <tr>
+                        <th>Estado</th>
                         <th>Ubicación</th>
                         <th>Código</th>
                         <th>Tipo</th>
@@ -48,7 +70,16 @@
                 </thead>
                 <tbody>
                     {% for item in items %}
-                    <tr>
+                    <tr data-cantidad="{{ item.cantidad_pares }}" class="{% if item.cantidad_pares == 0 %}table-secondary{% elif item.cantidad_pares < 6 %}table-warning{% endif %}">
+                        <td class="text-center">
+                            {% if item.cantidad_pares == 0 %}
+                                <span class="badge bg-danger" title="Sin stock">❌</span>
+                            {% elif item.cantidad_pares < 6 %}
+                                <span class="badge bg-warning" title="Stock bajo">⚠️</span>
+                            {% else %}
+                                <span class="badge bg-success" title="Con stock">✓</span>
+                            {% endif %}
+                        </td>
                         <td><span class="badge bg-secondary">{{ item.ubicacion_nombre }}</span></td>
                         <td><strong>{{ item.codigo_interno }}</strong></td>
                         <td><small>{{ item.tipo_calzado }}</small></td>
@@ -61,12 +92,20 @@
                             {% if item.tipo_stock == 'general' %}
                                 <span class="badge bg-success">General</span>
                             {% else %}
-                                <span class="badge bg-warning">Pedido</span>
+                                <span class="badge bg-info">Pedido</span>
                             {% endif %}
                         </td>
-                        <td class="text-center"><strong>{{ item.cantidad_pares }}</strong></td>
-                        <td>${{ "%.2f"|format(item.precio_sugerido) }}</td>
-                        <td><strong>${{ "%.2f"|format(item.cantidad_pares * item.precio_sugerido) }}</strong></td>
+                        <td class="text-center">
+                            {% if item.cantidad_pares == 0 %}
+                                <strong class="text-danger">0</strong>
+                            {% elif item.cantidad_pares < 6 %}
+                                <strong class="text-warning">{{ item.cantidad_pares }}</strong>
+                            {% else %}
+                                <strong class="text-success">{{ item.cantidad_pares }}</strong>
+                            {% endif %}
+                        </td>
+                        <td>S/ {{ "%.2f"|format(item.precio_sugerido) }}</td>
+                        <td><strong>S/ {{ "%.2f"|format(item.cantidad_pares * item.precio_sugerido) }}</strong></td>
                     </tr>
                     {% endfor %}
                 </tbody>
@@ -74,8 +113,53 @@
         </div>
     </div>
     <div class="card-footer text-muted">
-        Total items: <strong>{{ items|length }}</strong>
+        Mostrando: <strong id="contador-visible">{{ items|length }}</strong> de <strong>{{ items|length }}</strong> items
     </div>
 </div>
+
+<script>
+function filtrarStock(tipo) {
+    const filas = document.querySelectorAll('#tabla-inventario tbody tr');
+    let contador = 0;
+
+    // Actualizar botones activos
+    document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    filas.forEach(row => {
+        const cantidad = parseInt(row.dataset.cantidad);
+        let mostrar = false;
+
+        if (tipo === 'todos') {
+            mostrar = true;
+        } else if (tipo === 'con-stock') {
+            mostrar = cantidad > 0;
+        } else if (tipo === 'sin-stock') {
+            mostrar = cantidad === 0;
+        } else if (tipo === 'stock-bajo') {
+            mostrar = cantidad > 0 && cantidad < 6;
+        }
+
+        if (mostrar) {
+            row.style.display = '';
+            contador++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    // Actualizar contador y mensaje
+    const total = filas.length;
+    document.getElementById('contador-visible').textContent = contador;
+
+    const mensajes = {
+        'todos': 'Mostrando todos los productos',
+        'con-stock': 'Mostrando productos con stock disponible',
+        'sin-stock': 'Mostrando productos sin stock (agotados)',
+        'stock-bajo': 'Mostrando productos con stock bajo (< 6 pares)'
+    };
+    document.getElementById('resultado-filtro').textContent = mensajes[tipo];
+}
+</script>
 
 {% endblock %}

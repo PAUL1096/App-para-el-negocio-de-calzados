@@ -179,9 +179,14 @@ def produccion():
             v.codigo_interno,
             v.tipo_calzado,
             v.tipo_horma,
-            v.segmento
+            v.segmento,
+            COALESCE(SUM(i.cantidad_pares), 0) as stock_actual,
+            COALESCE(SUM(CASE WHEN i.tipo_stock = 'general' THEN i.cantidad_pares ELSE 0 END), 0) as stock_general,
+            COALESCE(SUM(CASE WHEN i.tipo_stock = 'pedido' THEN i.cantidad_pares ELSE 0 END), 0) as stock_pedido
         FROM productos_producidos p
         JOIN variantes_base v ON p.id_variante_base = v.id_variante_base
+        LEFT JOIN inventario i ON p.id_producto = i.id_producto
+        GROUP BY p.id_producto
         ORDER BY p.fecha_produccion DESC, p.id_producto DESC
     ''')
     productos = cursor.fetchall()

@@ -11,14 +11,39 @@
     </a>
 </div>
 
+<!-- Filtros por período -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="btn-group" role="group">
+            <button type="button" class="btn btn-outline-primary active" onclick="filtrarPeriodo('todas')">
+                📅 Todas
+            </button>
+            <button type="button" class="btn btn-outline-primary" onclick="filtrarPeriodo('hoy')">
+                📆 Hoy
+            </button>
+            <button type="button" class="btn btn-outline-primary" onclick="filtrarPeriodo('esta-semana')">
+                📅 Esta Semana
+            </button>
+            <button type="button" class="btn btn-outline-primary" onclick="filtrarPeriodo('semana-pasada')">
+                📅 Semana Pasada
+            </button>
+            <button type="button" class="btn btn-outline-primary" onclick="filtrarPeriodo('este-mes')">
+                📅 Este Mes
+            </button>
+        </div>
+        <span class="ms-3" id="resultado-filtro">Mostrando todas las preparaciones</span>
+    </div>
+</div>
+
 <div class="card">
     <div class="card-body p-0">
         <div class="table-responsive">
-            <table class="table table-hover mb-0">
+            <table class="table table-hover mb-0" id="tabla-preparaciones">
                 <thead>
                     <tr>
                         <th>Código</th>
                         <th>Fecha</th>
+                        <th>Semana</th>
                         <th>Día Venta</th>
                         <th>Origen</th>
                         <th>Productos</th>
@@ -31,15 +56,22 @@
                 </thead>
                 <tbody>
                     {% for prep in preparaciones %}
-                    <tr>
+                    <tr data-fecha="{{ prep.fecha_preparacion }}">
                         <td><strong>{{ prep.codigo_preparacion }}</strong></td>
                         <td>{{ prep.fecha_preparacion }}</td>
+                        <td><span class="badge bg-secondary semana-badge"></span></td>
                         <td><span class="badge bg-primary">{{ prep.dia_venta }}</span></td>
                         <td>{{ prep.ubicacion_origen }}</td>
                         <td>{{ prep.total_productos or 0 }}</td>
                         <td>{{ prep.total_pares or 0 }}</td>
-                        <td>{{ prep.total_vendido or 0 }}</td>
-                        <td><strong>{{ prep.pendiente_vender or 0 }}</strong></td>
+                        <td><span class="text-success"><strong>{{ prep.total_vendido or 0 }}</strong></span></td>
+                        <td>
+                            {% if (prep.pendiente_vender or 0) > 0 %}
+                                <strong class="text-warning">{{ prep.pendiente_vender }}</strong>
+                            {% else %}
+                                <span class="text-muted">0</span>
+                            {% endif %}
+                        </td>
                         <td>
                             {% if prep.estado == 'pendiente' %}
                                 <span class="badge bg-warning">Pendiente</span>
@@ -54,6 +86,8 @@
                             <a href="/ventas/nueva/{{ prep.id_preparacion }}" class="btn btn-sm btn-success">
                                 <i class="bi bi-cart-plus"></i> Vender
                             </a>
+                            {% else %}
+                            <span class="text-muted small">✓ Completado</span>
                             {% endif %}
                         </td>
                     </tr>
@@ -63,7 +97,90 @@
         </div>
     </div>
     <div class="card-footer text-muted">
-        Total: <strong>{{ preparaciones|length }}</strong> preparaciones
+        Mostrando: <strong id="contador-visible">{{ preparaciones|length }}</strong> de <strong>{{ preparaciones|length }}</strong> preparaciones
     </div>
 </div>
+
+<script>
+// Calcular número de semana del año
+function getWeekNumber(fecha) {
+    const d = new Date(fecha);
+    d.setHours(0, 0, 0, 0);
+    d.setDate(d.getDate() + 4 - (d.getDay() || 7));
+    const yearStart = new Date(d.getFullYear(), 0, 1);
+    const weekNo = Math.ceil((((d - yearStart) / 86400000) + 1) / 7);
+    return `Semana ${weekNo}/${d.getFullYear()}`;
+}
+
+// Agregar etiquetas de semana a cada fila
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('tr[data-fecha]').forEach(row => {
+        const fecha = row.dataset.fecha;
+        const semana = getWeekNumber(fecha);
+        row.querySelector('.semana-badge').textContent = semana;
+    });
+});
+
+// Filtrar por período
+function filtrarPeriodo(periodo) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const filas = document.querySelectorAll('#tabla-preparaciones tbody tr');
+    let contador = 0;
+
+    // Actualizar botones activos
+    document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    filas.forEach(row => {
+        const fechaStr = row.dataset.fecha;
+        const fecha = new Date(fechaStr);
+        fecha.setHours(0, 0, 0, 0);
+
+        let mostrar = false;
+
+        if (periodo === 'todas') {
+            mostrar = true;
+        } else if (periodo === 'hoy') {
+            mostrar = fecha.getTime() === hoy.getTime();
+        } else if (periodo === 'esta-semana') {
+            const inicioSemana = new Date(hoy);
+            inicioSemana.setDate(hoy.getDate() - hoy.getDay());
+            const finSemana = new Date(inicioSemana);
+            finSemana.setDate(inicioSemana.getDate() + 6);
+            mostrar = fecha >= inicioSemana && fecha <= finSemana;
+        } else if (periodo === 'semana-pasada') {
+            const inicioSemanaPasada = new Date(hoy);
+            inicioSemanaPasada.setDate(hoy.getDate() - hoy.getDay() - 7);
+            const finSemanaPasada = new Date(inicioSemanaPasada);
+            finSemanaPasada.setDate(inicioSemanaPasada.getDate() + 6);
+            mostrar = fecha >= inicioSemanaPasada && fecha <= finSemanaPasada;
+        } else if (periodo === 'este-mes') {
+            mostrar = fecha.getMonth() === hoy.getMonth() && fecha.getFullYear() === hoy.getFullYear();
+        }
+
+        if (mostrar) {
+            row.style.display = '';
+            contador++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    // Actualizar contador y mensaje
+    const total = filas.length;
+    document.getElementById('contador-visible').textContent = contador;
+
+    const mensajes = {
+        'todas': 'Mostrando todas las preparaciones',
+        'hoy': 'Mostrando preparaciones de hoy',
+        'esta-semana': 'Mostrando preparaciones de esta semana',
+        'semana-pasada': 'Mostrando preparaciones de la semana pasada',
+        'este-mes': 'Mostrando preparaciones de este mes'
+    };
+    document.getElementById('resultado-filtro').textContent = mensajes[periodo];
+}
+</script>
+
 {% endblock %}
