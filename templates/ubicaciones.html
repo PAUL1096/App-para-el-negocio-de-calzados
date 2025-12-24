@@ -24,7 +24,7 @@
                 </h5>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-3">{{ ubicacion.descripcion }}</p>
+                <p class="text-muted mb-3">{{ ubicacion.direccion or 'Sin dirección' }}</p>
 
                 <div class="row text-center mb-3">
                     <div class="col-4">
@@ -96,8 +96,8 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Descripción</label>
-                        <textarea class="form-control" name="descripcion" rows="3"></textarea>
+                        <label class="form-label">Dirección</label>
+                        <textarea class="form-control" name="direccion" rows="3" placeholder="Ej: Calle Principal #123, Calzaplaza"></textarea>
                     </div>
                 </form>
             </div>

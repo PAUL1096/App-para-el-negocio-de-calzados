@@ -26,7 +26,7 @@ def actualizar_nombres():
     cursor.execute('''
         UPDATE ubicaciones
         SET nombre = 'Tienda en Calzaplaza',
-            descripcion = 'Tienda principal ubicada en Calzaplaza'
+            direccion = 'Tienda principal ubicada en Calzaplaza'
         WHERE nombre LIKE '%Tienda Principal%' OR nombre LIKE '%tienda principal%'
     ''')
     print(f"\n✅ Actualizada 'Tienda Principal' → 'Tienda en Calzaplaza' ({cursor.rowcount} filas)")
@@ -35,7 +35,7 @@ def actualizar_nombres():
     cursor.execute('''
         UPDATE ubicaciones
         SET nombre = 'Tienda en CalzaPe',
-            descripcion = 'Tienda secundaria ubicada en CalzaPe'
+            direccion = 'Tienda secundaria ubicada en CalzaPe'
         WHERE nombre LIKE '%Tienda Secundaria%' OR nombre LIKE '%tienda secundaria%'
     ''')
     print(f"✅ Actualizada 'Tienda Secundaria' → 'Tienda en CalzaPe' ({cursor.rowcount} filas)")
@@ -65,7 +65,7 @@ def actualizar_nombres():
 
     # Mostrar ubicaciones actualizadas
     print("\n📋 Ubicaciones actualizadas:")
-    cursor.execute('SELECT id_ubicacion, nombre, tipo, descripcion FROM ubicaciones ORDER BY nombre')
+    cursor.execute('SELECT id_ubicacion, nombre, tipo, direccion FROM ubicaciones ORDER BY nombre')
     ubicaciones_despues = cursor.fetchall()
     for ub in ubicaciones_despues:
         print(f"  {ub[0]}. {ub[1]} ({ub[2]})")
