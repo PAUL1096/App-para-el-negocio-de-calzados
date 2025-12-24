@@ -1,0 +1,113 @@
+{% extends "base.html" %}
+{% block title %}Dashboard - Sistema Calzado v2.0{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-speedometer2"></i> Dashboard v2.0</h1>
+    <p class="text-muted">Sistema de Gestión de Calzado - Modelo Correcto</p>
+</div>
+
+<!-- Estadísticas -->
+<div class="row g-4 mb-4">
+    <div class="col-md-3">
+        <div class="card text-white bg-primary">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-box"></i> Variantes Base</h5>
+                <h2 class="display-4">{{ stats.variantes }}</h2>
+                <p class="card-text">Modelos en catálogo</p>
+                <a href="/catalogo-variantes" class="btn btn-light btn-sm">Ver Catálogo</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-success">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-hammer"></i> Productos</h5>
+                <h2 class="display-4">{{ stats.productos }}</h2>
+                <p class="card-text">Productos producidos</p>
+                <a href="/produccion" class="btn btn-light btn-sm">Ver Producción</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-info">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-boxes"></i> Stock Total</h5>
+                <h2 class="display-4">{{ stats.stock }}</h2>
+                <p class="card-text">Pares en inventario</p>
+                <a href="/inventario" class="btn btn-light btn-sm">Ver Inventario</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-3">
+        <div class="card text-white bg-warning">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-cart-check"></i> Ventas Hoy</h5>
+                <h2 class="display-4">{{ stats.ventas_hoy }}</h2>
+                <p class="card-text">Ventas registradas</p>
+                <a href="/ventas" class="btn btn-light btn-sm">Ver Ventas</a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Flujo del Sistema -->
+<div class="card">
+    <div class="card-header">
+        <h5><i class="bi bi-diagram-3"></i> Flujo del Sistema v2.0</h5>
+    </div>
+    <div class="card-body">
+        <div class="row text-center">
+            <div class="col-md-2">
+                <div class="p-3 border rounded bg-light">
+                    <i class="bi bi-box display-4 text-primary"></i>
+                    <h6 class="mt-2">1. Catálogo</h6>
+                    <small class="text-muted">Variantes Base</small>
+                </div>
+            </div>
+            <div class="col-md-1 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-right display-6 text-muted"></i>
+            </div>
+            <div class="col-md-2">
+                <div class="p-3 border rounded bg-light">
+                    <i class="bi bi-hammer display-4 text-success"></i>
+                    <h6 class="mt-2">2. Producción</h6>
+                    <small class="text-muted">Productos Concretos</small>
+                </div>
+            </div>
+            <div class="col-md-1 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-right display-6 text-muted"></i>
+            </div>
+            <div class="col-md-2">
+                <div class="p-3 border rounded bg-light">
+                    <i class="bi bi-boxes display-4 text-info"></i>
+                    <h6 class="mt-2">3. Inventario</h6>
+                    <small class="text-muted">Stock en Ubicaciones</small>
+                </div>
+            </div>
+            <div class="col-md-1 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-right display-6 text-muted"></i>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3 border rounded bg-light">
+                    <i class="bi bi-cart-check display-4 text-warning"></i>
+                    <h6 class="mt-2">4. Prep. → Ventas</h6>
+                    <small class="text-muted">Sistema Actual</small>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Información del modelo -->
+<div class="alert alert-info mt-4">
+    <h5><i class="bi bi-info-circle"></i> Nuevo Modelo de Datos</h5>
+    <p><strong>Variante Base:</strong> Modelo/Plantilla (Código, Tipo, Horma, Segmento)</p>
+    <p><strong>Producto:</strong> Materialización (Variante + Cuero + Color + Suela + Forro)</p>
+    <p><strong>Inventario:</strong> Stock físico de productos en ubicaciones</p>
+    <p class="mb-0"><strong>Preparaciones y Ventas:</strong> Funcionan con productos (ya no con variantes)</p>
+</div>
+
+{% endblock %}

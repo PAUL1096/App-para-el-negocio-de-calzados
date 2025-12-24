@@ -1,0 +1,193 @@
+{% extends "base.html" %}
+{% block title %}Producción - Sistema Calzado{% endblock %}
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-hammer"></i> Producción de Calzado</h1>
+        <p class="text-muted">Productos materializados a partir de variantes base</p>
+    </div>
+    <a href="/catalogo-variantes" class="btn btn-outline-secondary">
+        <i class="bi bi-box"></i> Ver Catálogo
+    </a>
+</div>
+
+<!-- Ayuda sobre estados -->
+<div class="alert alert-info mb-3">
+    <strong>ℹ️ Estados de Producción:</strong>
+    <ul class="mb-0 mt-2">
+        <li><strong>✓ Con Stock:</strong> Producto ya ingresado a inventario y disponible</li>
+        <li><strong>❌ Agotado:</strong> Se vendió todo el stock (no se puede reingresar, debes producir nuevamente)</li>
+        <li><strong>⏳ Pendiente Ingreso:</strong> Producto recién producido que aún NO se ha ingresado a ningún inventario/ubicación</li>
+    </ul>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-3">
+    <div class="card-body">
+        <div class="btn-group me-3" role="group">
+            <button type="button" class="btn btn-outline-primary active" onclick="filtrarEstado('todos')">
+                📦 Todos
+            </button>
+            <button type="button" class="btn btn-outline-success" onclick="filtrarEstado('disponible')">
+                ✓ Con Stock
+            </button>
+            <button type="button" class="btn btn-outline-danger" onclick="filtrarEstado('agotado')">
+                ❌ Agotado
+            </button>
+            <button type="button" class="btn btn-outline-info" onclick="filtrarEstado('pendiente')">
+                ⏳ Pendiente Ingreso
+            </button>
+        </div>
+        <span id="resultado-filtro">Mostrando todos los productos</span>
+    </div>
+</div>
+
+<!-- Tabla de productos producidos -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0" id="tabla-produccion">
+                <thead>
+                    <tr>
+                        <th>Estado</th>
+                        <th>ID</th>
+                        <th>Código Interno</th>
+                        <th>Tipo</th>
+                        <th>Cuero</th>
+                        <th>Color</th>
+                        <th>Suela</th>
+                        <th>Forro</th>
+                        <th>Serie Tallas</th>
+                        <th>Producido</th>
+                        <th>Stock Actual</th>
+                        <th>General/Pedido</th>
+                        <th>Costo</th>
+                        <th>Precio</th>
+                        <th>Fecha Prod.</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for producto in productos %}
+                    {% if producto.tiene_registros_inventario == 0 %}
+                        {% set estado = 'pendiente' %}
+                    {% elif producto.stock_actual > 0 %}
+                        {% set estado = 'disponible' %}
+                    {% else %}
+                        {% set estado = 'agotado' %}
+                    {% endif %}
+                    {% set vendido = producto.cantidad_total_pares - producto.stock_actual %}
+                    <tr data-estado="{{ estado }}" class="{% if estado == 'agotado' %}table-secondary{% elif estado == 'pendiente' %}table-warning{% endif %}">
+                        <td class="text-center">
+                            {% if estado == 'agotado' %}
+                                <span class="badge bg-danger" title="Totalmente vendido/agotado">❌</span>
+                            {% elif estado == 'pendiente' %}
+                                <span class="badge bg-warning" title="Pendiente de ingresar a inventario">⏳</span>
+                            {% else %}
+                                <span class="badge bg-success" title="Disponible en inventario">✓</span>
+                            {% endif %}
+                        </td>
+                        <td><small class="text-muted">#{{ producto.id_producto }}</small></td>
+                        <td><span class="badge bg-primary">{{ producto.codigo_interno }}</span></td>
+                        <td><small>{{ producto.tipo_calzado }}</small></td>
+                        <td><strong>{{ producto.cuero }}</strong></td>
+                        <td>{{ producto.color_cuero }}</td>
+                        <td>{{ producto.suela }}</td>
+                        <td><small>{{ producto.forro or '-' }}</small></td>
+                        <td><small class="text-muted">{{ producto.serie_tallas }}</small></td>
+                        <td class="text-center"><strong>{{ producto.cantidad_total_pares }}</strong></td>
+                        <td class="text-center">
+                            {% if estado == 'pendiente' %}
+                                <strong class="text-warning">0</strong>
+                                <br><small class="text-warning">⏳ No ingresado</small>
+                            {% elif estado == 'agotado' %}
+                                <strong class="text-danger">0</strong>
+                                <br><small class="text-danger">✓ Vendido: {{ vendido }} pares</small>
+                            {% else %}
+                                <strong class="text-success">{{ producto.stock_actual }}</strong>
+                                {% if vendido > 0 %}
+                                    <br><small class="text-muted">Vendido: {{ vendido }}</small>
+                                {% endif %}
+                            {% endif %}
+                        </td>
+                        <td><small class="text-success">{{ producto.stock_general }}</small> / <small class="text-info">{{ producto.stock_pedido }}</small></td>
+                        <td>S/ {{ "%.2f"|format(producto.costo_unitario) }}</td>
+                        <td><strong>S/ {{ "%.2f"|format(producto.precio_sugerido) }}</strong></td>
+                        <td><small>{{ producto.fecha_produccion }}</small></td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-info" onclick="verDetalle({{ producto.id_producto }})" title="Ver">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                                {% if estado == 'pendiente' %}
+                                <a href="/inventario/ingresar/{{ producto.id_producto }}" class="btn btn-outline-success" title="Ingresar a Inventario">
+                                    <i class="bi bi-box-arrow-in-down"></i>
+                                </a>
+                                {% elif estado == 'agotado' %}
+                                <button class="btn btn-outline-danger" disabled title="Agotado - Producir nuevamente si necesitas más">
+                                    <i class="bi bi-x-circle"></i>
+                                </button>
+                                {% else %}
+                                <button class="btn btn-outline-secondary" disabled title="Ya en inventario">
+                                    <i class="bi bi-check"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer text-muted">
+        Mostrando: <strong id="contador-visible">{{ productos|length }}</strong> de <strong>{{ productos|length }}</strong> productos
+    </div>
+</div>
+
+<script>
+function filtrarEstado(estado) {
+    const filas = document.querySelectorAll('#tabla-produccion tbody tr');
+    let contador = 0;
+
+    // Actualizar botones activos
+    document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    filas.forEach(row => {
+        const estadoRow = row.dataset.estado;
+        let mostrar = false;
+
+        if (estado === 'todos') {
+            mostrar = true;
+        } else if (estado === 'disponible') {
+            mostrar = estadoRow === 'disponible';
+        } else if (estado === 'agotado') {
+            mostrar = estadoRow === 'agotado';
+        } else if (estado === 'pendiente') {
+            mostrar = estadoRow === 'pendiente';
+        }
+
+        if (mostrar) {
+            row.style.display = '';
+            contador++;
+        } else {
+            row.style.display = 'none';
+        }
+    });
+
+    // Actualizar contador y mensaje
+    const total = filas.length;
+    document.getElementById('contador-visible').textContent = contador;
+
+    const mensajes = {
+        'todos': 'Mostrando todos los productos',
+        'disponible': 'Mostrando productos con stock disponible',
+        'agotado': 'Mostrando productos totalmente vendidos/agotados',
+        'pendiente': 'Mostrando productos pendientes de ingresar a inventario'
+    };
+    document.getElementById('resultado-filtro').textContent = mensajes[estado];
+}
+</script>
+
+{% endblock %}

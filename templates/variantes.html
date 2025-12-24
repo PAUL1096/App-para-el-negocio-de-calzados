@@ -1,0 +1,355 @@
+{% extends "base.html" %}
+
+{% block title %}Variantes - Sistema Calzado{% endblock %}
+
+{% block content %}
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-palette"></i> Gestión de Variantes</h1>
+        <p class="text-muted">Administra las variantes de tus productos (Cuero + Color + Serie)</p>
+    </div>
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaVariante">
+        <i class="bi bi-plus-circle"></i> Nueva Variante
+    </button>
+</div>
+
+<!-- Filtros -->
+<div class="card mb-4">
+    <div class="card-body">
+        <div class="row g-3">
+            <div class="col-md-3">
+                <label class="form-label">Código Producto</label>
+                <input type="text" class="form-control" id="filtro_codigo" placeholder="Buscar...">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Cuero</label>
+                <input type="text" class="form-control" id="filtro_cuero" placeholder="Ej: huante">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Color</label>
+                <input type="text" class="form-control" id="filtro_color" placeholder="Ej: negro">
+            </div>
+            <div class="col-md-2">
+                <label class="form-label">Estado</label>
+                <select class="form-select" id="filtro_estado">
+                    <option value="">Todas</option>
+                    <option value="1" selected>Activas</option>
+                    <option value="0">Inactivas</option>
+                </select>
+            </div>
+            <div class="col-md-3">
+                <label class="form-label">&nbsp;</label>
+                <button class="btn btn-primary w-100">
+                    <i class="bi bi-funnel"></i> Filtrar
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Tabla de variantes -->
+<div class="card">
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Código Sistema</th>
+                        <th>Código Interno</th>
+                        <th>Tipo</th>
+                        <th>Cuero</th>
+                        <th>Color</th>
+                        <th>Serie Tallas</th>
+                        <th>Pares/Docena</th>
+                        <th>Costo Unit.</th>
+                        <th>Precio Sugerido</th>
+                        <th>Margen</th>
+                        <th>Stock</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for variante in variantes %}
+                    <tr>
+                        <td><small class="text-muted">#{{ variante.id_variante }}</small></td>
+                        <td><strong>{{ variante.codigo_producto }}</strong></td>
+                        <td>
+                            {% if variante.codigo_interno %}
+                                <span class="badge bg-info">{{ variante.codigo_interno }}</span>
+                            {% else %}
+                                <small class="text-muted">-</small>
+                            {% endif %}
+                        </td>
+                        <td><span class="badge bg-secondary">{{ variante.tipo }}</span></td>
+                        <td><strong>{{ variante.cuero }}</strong></td>
+                        <td>{{ variante.color }}</td>
+                        <td><small class="text-muted">{{ variante.serie_tallas }}</small></td>
+                        <td class="text-center">{{ variante.pares_por_docena }}</td>
+                        <td>${{ "%.2f"|format(variante.costo_unitario) }}</td>
+                        <td><strong>${{ "%.2f"|format(variante.precio_sugerido) }}</strong></td>
+                        <td>
+                            {% set margen = ((variante.precio_sugerido - variante.costo_unitario) / variante.costo_unitario * 100) %}
+                            <span class="badge {% if margen >= 50 %}bg-success{% elif margen >= 30 %}bg-warning{% else %}bg-danger{% endif %}">
+                                {{ "%.1f"|format(margen) }}%
+                            </span>
+                        </td>
+                        <td>
+                            {% if variante.stock_total > 0 %}
+                                <span class="badge bg-info">{{ variante.stock_total }}</span>
+                            {% else %}
+                                <span class="text-muted">0</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <button class="btn btn-outline-primary" onclick="editarVariante({{ variante.id_variante }})" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-info" onclick="verDetalleVariante({{ variante.id_variante }})" title="Ver detalle">
+                                    <i class="bi bi-eye"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <div class="card-footer text-muted">
+        Total de variantes: <strong>{{ variantes|length }}</strong>
+    </div>
+</div>
+
+<!-- Modal: Nueva Variante -->
+<div class="modal fade" id="modalNuevaVariante" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nueva Variante</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuevaVariante">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Código Producto *</label>
+                            <input type="number" class="form-control" name="codigo_producto" required>
+                            <small class="text-muted">Sistema</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Código Interno</label>
+                            <input type="text" class="form-control" name="codigo_interno" placeholder="Ej: M-2024-001">
+                            <small class="text-muted">Tu código (opcional)</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cuero *</label>
+                            <input type="text" class="form-control" name="cuero" required placeholder="Ej: huante, cuero, sintético">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Color *</label>
+                            <input type="text" class="form-control" name="color" required placeholder="Ej: negro, marrón">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Pares por Docena</label>
+                            <input type="number" class="form-control" name="pares_por_docena" value="12">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Serie de Tallas *</label>
+                            <input type="text" class="form-control" name="serie_tallas" required
+                                   placeholder="Ej: Serie Normal, 38(2) 39(3) 40(3) 41(2) 42(2)">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Costo Unitario</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" name="costo_unitario" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Precio Sugerido</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" name="precio_sugerido" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Observaciones</label>
+                            <textarea class="form-control" name="observaciones" rows="2"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarVariante()">
+                    <i class="bi bi-save"></i> Guardar Variante
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Editar Variante -->
+<div class="modal fade" id="modalEditarVariante" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Editar Variante</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarVariante">
+                    <input type="hidden" id="edit_id_variante" name="id_variante">
+                    <div class="row g-3">
+                        <div class="col-md-4">
+                            <label class="form-label">Código Producto</label>
+                            <input type="number" class="form-control" id="edit_codigo_producto" name="codigo_producto" readonly>
+                            <small class="text-muted">No editable - Sistema</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Código Interno</label>
+                            <input type="text" class="form-control" id="edit_codigo_interno" name="codigo_interno" placeholder="Ej: M-2024-001">
+                            <small class="text-muted">Tu código (editable)</small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cuero *</label>
+                            <input type="text" class="form-control" id="edit_cuero" name="cuero" required placeholder="Ej: huante, cuero, sintético">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Color *</label>
+                            <input type="text" class="form-control" id="edit_color" name="color" required placeholder="Ej: negro, marrón">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Pares por Docena</label>
+                            <input type="number" class="form-control" id="edit_pares_por_docena" name="pares_por_docena" value="12">
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Serie de Tallas *</label>
+                            <input type="text" class="form-control" id="edit_serie_tallas" name="serie_tallas" required
+                                   placeholder="Ej: Serie Normal, 38(2) 39(3) 40(3) 41(2) 42(2)">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Costo Unitario *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="edit_costo_unitario" name="costo_unitario" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Precio Sugerido *</label>
+                            <div class="input-group">
+                                <span class="input-group-text">$</span>
+                                <input type="number" class="form-control" id="edit_precio_sugerido" name="precio_sugerido" step="0.01" required>
+                            </div>
+                        </div>
+                        <div class="col-md-12">
+                            <label class="form-label">Observaciones</label>
+                            <textarea class="form-control" id="edit_observaciones" name="observaciones" rows="2"></textarea>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Estado</label>
+                            <select class="form-select" id="edit_activo" name="activo">
+                                <option value="1">Activo</option>
+                                <option value="0">Inactivo</option>
+                            </select>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="actualizarVariante()">
+                    <i class="bi bi-save"></i> Actualizar Variante
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function guardarVariante() {
+    const form = document.getElementById('formNuevaVariante');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+
+    fetch('/api/variantes/crear', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function editarVariante(idVariante) {
+    // Obtener datos de la variante
+    fetch(`/api/variantes/${idVariante}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const variante = data.variante;
+
+                // Llenar el formulario con los datos actuales
+                document.getElementById('edit_id_variante').value = variante.id_variante;
+                document.getElementById('edit_codigo_producto').value = variante.codigo_producto;
+                document.getElementById('edit_codigo_interno').value = variante.codigo_interno || '';
+                document.getElementById('edit_cuero').value = variante.cuero;
+                document.getElementById('edit_color').value = variante.color;
+                document.getElementById('edit_serie_tallas').value = variante.serie_tallas;
+                document.getElementById('edit_pares_por_docena').value = variante.pares_por_docena;
+                document.getElementById('edit_costo_unitario').value = variante.costo_unitario;
+                document.getElementById('edit_precio_sugerido').value = variante.precio_sugerido;
+                document.getElementById('edit_observaciones').value = variante.observaciones || '';
+                document.getElementById('edit_activo').value = variante.activo;
+
+                // Mostrar el modal
+                const modal = new bootstrap.Modal(document.getElementById('modalEditarVariante'));
+                modal.show();
+            } else {
+                alert('Error al cargar la variante: ' + data.error);
+            }
+        })
+        .catch(error => alert('Error: ' + error));
+}
+
+function actualizarVariante() {
+    const form = document.getElementById('formEditarVariante');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    const idVariante = data.id_variante;
+
+    fetch(`/api/variantes/${idVariante}/editar`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function verDetalleVariante(idVariante) {
+    window.location.href = `/inventario/detalle/${idVariante}`;
+}
+</script>
+{% endblock %}

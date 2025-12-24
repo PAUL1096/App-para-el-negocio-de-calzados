@@ -1,0 +1,160 @@
+{% extends "base.html" %}
+
+{% block title %}Nueva Preparación - Sistema Calzado{% endblock %}
+
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-bag-plus"></i> Nueva Preparación de Mercadería</h1>
+    <p class="text-muted">Selecciona qué llevar a vender</p>
+</div>
+
+<div class="alert alert-info">
+    <i class="bi bi-info-circle"></i>
+    <strong>Flujo:</strong> Selecciona variantes del stock general + pedidos a entregar → El sistema descuenta temporalmente del inventario → Al finalizar, devuelve lo no vendido
+</div>
+
+<form id="formNuevaPreparacion">
+    <div class="row g-3 mb-4">
+        <div class="col-md-4">
+            <label class="form-label">Fecha de Preparación *</label>
+            <input type="date" class="form-control" name="fecha_preparacion" required value="{{ 'now'|date('%Y-%m-%d') }}">
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Día de Venta *</label>
+            <select class="form-select" name="dia_venta" required>
+                {% for dia in dias_venta %}
+                <option value="{{ dia.strip() }}">{{ dia.strip() }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        <div class="col-md-4">
+            <label class="form-label">Ubicación Origen *</label>
+            <select class="form-select" name="id_ubicacion_origen" required>
+                {% for ub in ubicaciones %}
+                <option value="{{ ub.id_ubicacion }}">{{ ub.nombre }}</option>
+                {% endfor %}
+            </select>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-box"></i> Stock General a Llevar</h5>
+        </div>
+        <div class="card-body">
+            <div id="variantes-container">
+                {% for var in variantes_disponibles %}
+                <div class="row g-2 mb-2 align-items-center">
+                    <div class="col-md-5">
+                        <small><strong>{{ var.codigo_producto }}</strong> - {{ var.cuero }} {{ var.color }}</small>
+                    </div>
+                    <div class="col-md-2">
+                        <small class="text-muted">Stock: {{ var.stock_general }}</small>
+                    </div>
+                    <div class="col-md-3">
+                        <input type="number" class="form-control form-control-sm"
+                               data-variante="{{ var.id_variante }}"
+                               placeholder="Cantidad" min="0" max="{{ var.stock_general }}">
+                    </div>
+                    <div class="col-md-2">
+                        <small class="text-muted">{{ var.pares_por_docena }} pares/doc</small>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-clipboard-check"></i> Pedidos a Entregar</h5>
+        </div>
+        <div class="card-body">
+            {% if pedidos_pendientes %}
+                {% for pedido in pedidos_pendientes %}
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" name="pedidos_entregar"
+                           value="{{ pedido.id_pedido }}" id="pedido{{ pedido.id_pedido }}">
+                    <label class="form-check-label" for="pedido{{ pedido.id_pedido }}">
+                        <strong>Pedido #{{ pedido.id_pedido }}</strong> - {{ pedido.cliente }}
+                        ({{ pedido.total_pares }} pares) - Entrega: {{ pedido.fecha_entrega_estimada }}
+                    </label>
+                </div>
+                {% endfor %}
+            {% else %}
+                <p class="text-muted">No hay pedidos pendientes</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="mb-3">
+        <label class="form-label">Observaciones</label>
+        <textarea class="form-control" name="observaciones" rows="2"></textarea>
+    </div>
+
+    <div class="text-end">
+        <a href="/preparaciones" class="btn btn-secondary">Cancelar</a>
+        <button type="button" class="btn btn-primary" onclick="guardarPreparacion()">
+            <i class="bi bi-save"></i> Crear Preparación
+        </button>
+    </div>
+</form>
+
+{% endblock %}
+
+{% block extra_js %}
+<script>
+function guardarPreparacion() {
+    const form = document.getElementById('formNuevaPreparacion');
+    const formData = new FormData(form);
+
+    const data = {
+        fecha_preparacion: formData.get('fecha_preparacion'),
+        dia_venta: formData.get('dia_venta'),
+        id_ubicacion_origen: formData.get('id_ubicacion_origen'),
+        observaciones: formData.get('observaciones'),
+        variantes_general: [],
+        pedidos_entregar: []
+    };
+
+    // Recoger variantes con cantidad > 0
+    document.querySelectorAll('#variantes-container input[type="number"]').forEach(input => {
+        const cantidad = parseInt(input.value);
+        if (cantidad > 0) {
+            data.variantes_general.push({
+                id_variante: input.dataset.variante,
+                cantidad_pares: cantidad
+            });
+        }
+    });
+
+    // Recoger pedidos seleccionados
+    document.querySelectorAll('input[name="pedidos_entregar"]:checked').forEach(checkbox => {
+        data.pedidos_entregar.push({
+            id_pedido: parseInt(checkbox.value)
+        });
+    });
+
+    if (data.variantes_general.length === 0 && data.pedidos_entregar.length === 0) {
+        alert('Debes seleccionar al menos una variante o un pedido');
+        return;
+    }
+
+    fetch('/api/preparaciones/crear', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            window.location.href = `/preparaciones/${data.id_preparacion}`;
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+</script>
+{% endblock %}

@@ -1,0 +1,271 @@
+{% extends "base.html" %}
+{% block title %}Nueva Preparación{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-box-seam"></i> Nueva Preparación</h1>
+    <p class="text-muted">Seleccionar productos del inventario para preparar ventas</p>
+</div>
+
+<div class="card">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0">Datos de la Preparación</h5>
+    </div>
+    <div class="card-body">
+        <form id="formPreparacion">
+            <div class="row mb-3">
+                <div class="col-md-4">
+                    <label for="id_ubicacion_origen" class="form-label">Ubicación Origen *</label>
+                    <select class="form-select" id="id_ubicacion_origen" name="id_ubicacion_origen" required>
+                        <option value="">-- Seleccionar --</option>
+                        {% for ubic in ubicaciones %}
+                        <option value="{{ ubic.id_ubicacion }}">{{ ubic.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="dia_venta" class="form-label">Día de Venta *</label>
+                    <select class="form-select" id="dia_venta" name="dia_venta" required>
+                        <option value="">-- Seleccionar --</option>
+                        {% for dia in dias_venta %}
+                        <option value="{{ dia }}">{{ dia }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="col-md-4">
+                    <label for="fecha_preparacion" class="form-label">Fecha Preparación</label>
+                    <input type="date" class="form-control" id="fecha_preparacion" name="fecha_preparacion"
+                           value="{{ today }}">
+                </div>
+            </div>
+            <div class="row mb-3">
+                <div class="col-md-12">
+                    <label for="observaciones" class="form-label">Observaciones</label>
+                    <textarea class="form-control" id="observaciones" name="observaciones" rows="2"></textarea>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<div class="card mt-3">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0">Productos Disponibles en Inventario</h5>
+    </div>
+    <div class="card-body">
+        {% if productos_disponibles %}
+        <div class="table-responsive">
+            <table class="table table-hover table-sm">
+                <thead class="table-light">
+                    <tr>
+                        <th style="width: 50px;">
+                            <input type="checkbox" id="selectAll" class="form-check-input" title="Seleccionar todos">
+                        </th>
+                        <th>Variante</th>
+                        <th>Cuero</th>
+                        <th>Color</th>
+                        <th>Suela</th>
+                        <th>Serie</th>
+                        <th>Ubicación</th>
+                        <th>Stock Disp.</th>
+                        <th style="width: 120px;">Cant. a Preparar</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for prod in productos_disponibles %}
+                    <tr class="producto-row">
+                        <td>
+                            <input type="checkbox" class="form-check-input producto-check"
+                                   data-id-producto="{{ prod.id_producto }}"
+                                   data-id-inventario="{{ prod.id_inventario }}"
+                                   data-stock-disponible="{{ prod.cantidad_pares }}">
+                        </td>
+                        <td><strong>{{ prod.codigo_interno }}</strong><br><small class="text-muted">{{ prod.tipo_calzado }}</small></td>
+                        <td>{{ prod.cuero }}</td>
+                        <td>{{ prod.color_cuero }}</td>
+                        <td>{{ prod.suela }}</td>
+                        <td>{{ prod.serie_tallas }}</td>
+                        <td><span class="badge bg-info">{{ prod.ubicacion }}</span></td>
+                        <td>
+                            <span class="badge bg-success stock-disponible" data-id-inventario="{{ prod.id_inventario }}">
+                                {{ prod.cantidad_pares }} pares
+                            </span>
+                        </td>
+                        <td>
+                            <input type="number" class="form-control form-control-sm cantidad-input"
+                                   data-id-inventario="{{ prod.id_inventario }}"
+                                   data-max="{{ prod.cantidad_pares }}"
+                                   min="0" max="{{ prod.cantidad_pares }}"
+                                   value="0" disabled>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        <div class="alert alert-info mt-3">
+            <i class="bi bi-info-circle"></i>
+            <strong>Total seleccionado:</strong> <span id="totalPares">0</span> pares en <span id="totalProductos">0</span> productos
+        </div>
+        {% else %}
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> No hay productos disponibles en inventario.
+            <a href="/inventario/ingresar" class="alert-link">Ingresar productos al inventario</a>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<div class="d-flex justify-content-between mt-4">
+    <a href="/preparaciones" class="btn btn-secondary">
+        <i class="bi bi-arrow-left"></i> Cancelar
+    </a>
+    <button type="button" class="btn btn-primary btn-lg" id="btnGuardarPreparacion">
+        <i class="bi bi-check-circle"></i> Crear Preparación
+    </button>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const selectAll = document.getElementById('selectAll');
+    const checkboxes = document.querySelectorAll('.producto-check');
+    const cantidadInputs = document.querySelectorAll('.cantidad-input');
+
+    // Seleccionar/Deseleccionar todos
+    selectAll.addEventListener('change', function() {
+        checkboxes.forEach(cb => {
+            cb.checked = this.checked;
+            const input = document.querySelector(`.cantidad-input[data-id-inventario="${cb.dataset.idInventario}"]`);
+            input.disabled = !this.checked;
+            if (!this.checked) {
+                input.value = 0;
+            }
+        });
+        actualizarTotales();
+    });
+
+    // Habilitar/deshabilitar input de cantidad al seleccionar producto
+    checkboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const input = document.querySelector(`.cantidad-input[data-id-inventario="${this.dataset.idInventario}"]`);
+            input.disabled = !this.checked;
+            if (!this.checked) {
+                input.value = 0;
+            }
+            actualizarTotales();
+        });
+    });
+
+    // Validar cantidad máxima y actualizar totales
+    cantidadInputs.forEach(input => {
+        input.addEventListener('input', function() {
+            const max = parseInt(this.dataset.max);
+            if (parseInt(this.value) > max) {
+                this.value = max;
+            }
+            if (parseInt(this.value) < 0) {
+                this.value = 0;
+            }
+            actualizarTotales();
+        });
+    });
+
+    // Actualizar totales
+    function actualizarTotales() {
+        let totalPares = 0;
+        let totalProductos = 0;
+
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                const input = document.querySelector(`.cantidad-input[data-id-inventario="${cb.dataset.idInventario}"]`);
+                const cantidad = parseInt(input.value) || 0;
+                if (cantidad > 0) {
+                    totalPares += cantidad;
+                    totalProductos++;
+                }
+            }
+        });
+
+        document.getElementById('totalPares').textContent = totalPares;
+        document.getElementById('totalProductos').textContent = totalProductos;
+    }
+
+    // Guardar preparación
+    document.getElementById('btnGuardarPreparacion').addEventListener('click', function() {
+        // Validar datos básicos
+        const ubicacion = document.getElementById('id_ubicacion_origen').value;
+        const diaVenta = document.getElementById('dia_venta').value;
+
+        if (!ubicacion || !diaVenta) {
+            alert('Por favor completa los campos obligatorios (Ubicación y Día de Venta)');
+            return;
+        }
+
+        // Recopilar productos seleccionados
+        const productos = [];
+        checkboxes.forEach(cb => {
+            if (cb.checked) {
+                const input = document.querySelector(`.cantidad-input[data-id-inventario="${cb.dataset.idInventario}"]`);
+                const cantidad = parseInt(input.value) || 0;
+
+                if (cantidad > 0) {
+                    productos.push({
+                        id_producto: parseInt(cb.dataset.idProducto),
+                        id_inventario: parseInt(cb.dataset.idInventario),
+                        tipo_stock: 'general',
+                        cantidad_pares: cantidad
+                    });
+                }
+            }
+        });
+
+        if (productos.length === 0) {
+            alert('Debes seleccionar al menos un producto con cantidad mayor a 0');
+            return;
+        }
+
+        // Preparar datos para enviar
+        const data = {
+            id_ubicacion_origen: parseInt(ubicacion),
+            dia_venta: diaVenta,
+            fecha_preparacion: document.getElementById('fecha_preparacion').value,
+            observaciones: document.getElementById('observaciones').value,
+            productos: productos
+        };
+
+        // Enviar petición
+        this.disabled = true;
+        this.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creando...';
+
+        fetch('/api/preparaciones/crear', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(response => response.json())
+        .then(result => {
+            if (result.success) {
+                alert(`✅ Preparación creada exitosamente\nCódigo: ${result.codigo}`);
+                window.location.href = '/preparaciones';
+            } else {
+                alert('❌ Error: ' + result.error);
+                this.disabled = false;
+                this.innerHTML = '<i class="bi bi-check-circle"></i> Crear Preparación';
+            }
+        })
+        .catch(error => {
+            alert('❌ Error al crear preparación: ' + error);
+            this.disabled = false;
+            this.innerHTML = '<i class="bi bi-check-circle"></i> Crear Preparación';
+        });
+    });
+
+    // Establecer fecha de hoy por defecto
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('fecha_preparacion').value = today;
+});
+</script>
+
+{% endblock %}
