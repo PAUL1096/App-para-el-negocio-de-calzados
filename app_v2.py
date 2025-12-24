@@ -679,6 +679,187 @@ def registrar_venta():
         return jsonify({'success': False, 'error': str(e)}), 400
 
 # ============================================================================
+# MÓDULO: VENTA DIRECTA (Sin preparación)
+# ============================================================================
+
+@app.route('/ventas/nueva-directa')
+def venta_directa_nueva():
+    """Formulario para venta directa desde inventario"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Obtener ubicaciones activas
+    cursor.execute('SELECT * FROM ubicaciones WHERE activo = 1 ORDER BY nombre')
+    ubicaciones = cursor.fetchall()
+
+    conn.close()
+
+    fecha_hoy = datetime.now().strftime('%Y-%m-%d')
+    return render_template('venta_directa_nueva.html',
+                         ubicaciones=ubicaciones,
+                         fecha_hoy=fecha_hoy)
+
+@app.route('/api/inventario/por-ubicacion/<int:id_ubicacion>')
+def inventario_por_ubicacion(id_ubicacion):
+    """API para obtener inventario disponible de una ubicación"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT
+                i.*,
+                p.cuero,
+                p.color_cuero,
+                p.suela,
+                p.forro,
+                p.serie_tallas,
+                p.precio_sugerido,
+                p.pares_por_docena,
+                vb.codigo_interno,
+                vb.tipo_calzado,
+                u.nombre as ubicacion_nombre
+            FROM inventario i
+            JOIN productos_producidos p ON i.id_producto = p.id_producto
+            JOIN variantes_base vb ON p.id_variante_base = vb.id_variante_base
+            JOIN ubicaciones u ON i.id_ubicacion = u.id_ubicacion
+            WHERE i.id_ubicacion = ? AND i.cantidad_pares > 0 AND i.tipo_stock = 'general'
+            ORDER BY vb.codigo_interno, p.cuero, p.color_cuero
+        ''', (id_ubicacion,))
+
+        inventario = cursor.fetchall()
+        conn.close()
+
+        # Convertir a lista de diccionarios
+        items = []
+        for row in inventario:
+            items.append({
+                'id_inventario': row['id_inventario'],
+                'id_producto': row['id_producto'],
+                'codigo_interno': row['codigo_interno'],
+                'tipo_calzado': row['tipo_calzado'],
+                'cuero': row['cuero'],
+                'color_cuero': row['color_cuero'],
+                'suela': row['suela'],
+                'forro': row['forro'],
+                'serie_tallas': row['serie_tallas'],
+                'cantidad_pares': row['cantidad_pares'],
+                'precio_sugerido': row['precio_sugerido'],
+                'pares_por_docena': row['pares_por_docena']
+            })
+
+        return jsonify({'success': True, 'inventario': items})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/ventas/registrar-directa', methods=['POST'])
+def registrar_venta_directa():
+    """API para registrar venta directa (sin preparación)"""
+    conn = None
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Iniciar transacción INMEDIATA
+        cursor.execute('BEGIN IMMEDIATE')
+
+        # Generar código de venta único
+        fecha_hoy = datetime.now().strftime('%Y%m%d')
+        cursor.execute('''
+            SELECT COALESCE(MAX(CAST(SUBSTR(codigo_venta, 11) AS INTEGER)), 0) as ultimo
+            FROM ventas_v2
+            WHERE codigo_venta LIKE ?
+        ''', (f"VD{fecha_hoy}-%",))
+
+        ultimo_numero = cursor.fetchone()['ultimo']
+        nuevo_numero = ultimo_numero + 1
+        codigo_venta = f"VD{fecha_hoy}-{nuevo_numero:03d}"  # VD = Venta Directa
+
+        cantidad_docenas = data['cantidad_pares'] / data.get('pares_por_docena', 12)
+        subtotal = data['cantidad_pares'] * data['precio_unitario']
+        total_final = subtotal - data.get('descuento', 0)
+
+        # Verificar stock disponible
+        cursor.execute('''
+            SELECT cantidad_pares FROM inventario
+            WHERE id_inventario = ? AND tipo_stock = 'general'
+        ''', (data['id_inventario'],))
+
+        inventario = cursor.fetchone()
+        if not inventario:
+            raise Exception('Inventario no encontrado')
+
+        if inventario['cantidad_pares'] < data['cantidad_pares']:
+            raise Exception(f'Stock insuficiente. Disponible: {inventario["cantidad_pares"]} pares')
+
+        # Crear venta (sin id_preparacion)
+        cursor.execute('''
+            INSERT INTO ventas_v2
+            (codigo_venta, id_preparacion, id_producto, cliente, cantidad_pares,
+             cantidad_docenas, precio_unitario, subtotal, descuento, total_final,
+             estado_pago, metodo_pago, observaciones)
+            VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            codigo_venta,
+            data['id_producto'],
+            data['cliente'],
+            data['cantidad_pares'],
+            cantidad_docenas,
+            data['precio_unitario'],
+            subtotal,
+            data.get('descuento', 0),
+            total_final,
+            data.get('estado_pago', 'pagado'),
+            data.get('metodo_pago', 'efectivo'),
+            data.get('observaciones', 'Venta directa desde inventario')
+        ))
+
+        # Descontar del inventario
+        cursor.execute('''
+            UPDATE inventario
+            SET cantidad_pares = cantidad_pares - ?
+            WHERE id_inventario = ?
+        ''', (data['cantidad_pares'], data['id_inventario']))
+
+        # Si hay cliente y es a crédito, crear cuenta por cobrar
+        if data.get('estado_pago') == 'credito' and data.get('id_cliente'):
+            cursor.execute('SELECT MAX(id_cuenta) FROM cuentas_por_cobrar')
+            max_id = cursor.fetchone()[0] or 0
+            codigo_cuenta = f"CC-{max_id + 1:06d}"
+
+            cursor.execute('''
+                INSERT INTO cuentas_por_cobrar
+                (id_cliente, codigo_cuenta, concepto, monto_total, saldo_pendiente,
+                 fecha_emision, fecha_vencimiento)
+                VALUES (?, ?, ?, ?, ?, DATE('now'), DATE('now', '+30 days'))
+            ''', (
+                data['id_cliente'],
+                codigo_cuenta,
+                f'Venta {codigo_venta}',
+                total_final,
+                total_final
+            ))
+
+        conn.commit()
+
+        return jsonify({
+            'success': True,
+            'message': 'Venta directa registrada exitosamente',
+            'codigo_venta': codigo_venta
+        })
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+    finally:
+        if conn:
+            conn.close()
+
+# ============================================================================
 # MÓDULO: UBICACIONES
 # ============================================================================
 

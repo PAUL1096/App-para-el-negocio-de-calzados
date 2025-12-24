@@ -4,11 +4,25 @@
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
         <h1><i class="bi bi-cart-check"></i> Registro de Ventas</h1>
-        <p class="text-muted">Ventas desde preparaciones</p>
+        <p class="text-muted">Ventas desde preparaciones o inventario directo</p>
     </div>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPreparacion">
-        <i class="bi bi-plus-circle"></i> Nueva Venta
-    </button>
+    <div class="btn-group">
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPreparacion">
+            <i class="bi bi-box-seam"></i> Venta desde Preparación
+        </button>
+        <a href="/ventas/nueva-directa" class="btn btn-success">
+            <i class="bi bi-lightning-charge"></i> Venta Directa
+        </a>
+    </div>
+</div>
+
+<!-- Banner informativo -->
+<div class="alert alert-info mb-3">
+    <strong><i class="bi bi-info-circle"></i> Dos formas de vender:</strong>
+    <ul class="mb-0 mt-2">
+        <li><strong>Venta desde Preparación:</strong> Ventas planificadas para días específicos (flujo tradicional)</li>
+        <li><strong>Venta Directa:</strong> Ventas inmediatas desde inventario en Casa, Tienda Calzaplaza o Tienda CalzaPe</li>
+    </ul>
 </div>
 
 <div class="card">
