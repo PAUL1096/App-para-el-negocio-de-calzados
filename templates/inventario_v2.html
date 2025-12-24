@@ -13,15 +13,21 @@
         {% if ubicaciones_dict.update({item.ubicacion_nombre: ubicaciones_dict.get(item.ubicacion_nombre, 0) + item.cantidad_pares}) %}{% endif %}
     {% endfor %}
 
-    {% for ubicacion, total in ubicaciones_dict.items() %}
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h6 class="text-muted">{{ ubicacion }}</h6>
-                <h3 class="mb-0">{{ total }} <small class="text-muted">pares</small></h3>
+    {% for ubicacion_obj in ubicaciones %}
+        {% set total_stock = ubicaciones_dict.get(ubicacion_obj.nombre, 0) %}
+        <div class="col-md-4">
+            <div class="card {% if total_stock == 0 %}border-danger{% endif %}">
+                <div class="card-body">
+                    <h6 class="text-muted">{{ ubicacion_obj.nombre }}</h6>
+                    <h3 class="mb-0 {% if total_stock == 0 %}text-danger{% else %}text-success{% endif %}">
+                        {{ total_stock }} <small class="text-muted">pares</small>
+                    </h3>
+                    {% if total_stock == 0 %}
+                        <small class="text-danger">Sin stock</small>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
     {% endfor %}
 </div>
 
@@ -52,9 +58,9 @@
                 <button type="button" class="btn btn-outline-secondary active" onclick="filtrarUbicacion('todas')">
                     🏢 Todas
                 </button>
-                {% for ubicacion in ubicaciones_dict.keys() %}
-                <button type="button" class="btn btn-outline-secondary" onclick="filtrarUbicacion('{{ ubicacion }}')">
-                    📍 {{ ubicacion }}
+                {% for ubicacion_obj in ubicaciones %}
+                <button type="button" class="btn btn-outline-secondary" onclick="filtrarUbicacion('{{ ubicacion_obj.nombre }}')">
+                    📍 {{ ubicacion_obj.nombre }}
                 </button>
                 {% endfor %}
             </div>

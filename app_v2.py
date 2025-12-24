@@ -182,7 +182,8 @@ def produccion():
             v.segmento,
             COALESCE(SUM(i.cantidad_pares), 0) as stock_actual,
             COALESCE(SUM(CASE WHEN i.tipo_stock = 'general' THEN i.cantidad_pares ELSE 0 END), 0) as stock_general,
-            COALESCE(SUM(CASE WHEN i.tipo_stock = 'pedido' THEN i.cantidad_pares ELSE 0 END), 0) as stock_pedido
+            COALESCE(SUM(CASE WHEN i.tipo_stock = 'pedido' THEN i.cantidad_pares ELSE 0 END), 0) as stock_pedido,
+            COUNT(i.id_inventario) as tiene_registros_inventario
         FROM productos_producidos p
         JOIN variantes_base v ON p.id_variante_base = v.id_variante_base
         LEFT JOIN inventario i ON p.id_producto = i.id_producto

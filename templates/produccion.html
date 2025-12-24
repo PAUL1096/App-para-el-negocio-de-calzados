@@ -69,8 +69,14 @@
                 </thead>
                 <tbody>
                     {% for producto in productos %}
+                    {% if producto.tiene_registros_inventario == 0 %}
+                        {% set estado = 'pendiente' %}
+                    {% elif producto.stock_actual > 0 %}
+                        {% set estado = 'disponible' %}
+                    {% else %}
+                        {% set estado = 'agotado' %}
+                    {% endif %}
                     {% set vendido = producto.cantidad_total_pares - producto.stock_actual %}
-                    {% set estado = 'disponible' if producto.stock_actual > 0 else ('agotado' if producto.stock_actual == 0 and vendido > 0 else 'pendiente') %}
                     <tr data-estado="{{ estado }}" class="{% if estado == 'agotado' %}table-secondary{% elif estado == 'pendiente' %}table-warning{% endif %}">
                         <td class="text-center">
                             {% if estado == 'agotado' %}
