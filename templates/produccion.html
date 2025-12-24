@@ -97,17 +97,16 @@
                         <td><small class="text-muted">{{ producto.serie_tallas }}</small></td>
                         <td class="text-center"><strong>{{ producto.cantidad_total_pares }}</strong></td>
                         <td class="text-center">
-                            {% if producto.stock_actual == 0 %}
+                            {% if estado == 'pendiente' %}
+                                <strong class="text-warning">0</strong>
+                                <br><small class="text-warning">⏳ No ingresado</small>
+                            {% elif estado == 'agotado' %}
                                 <strong class="text-danger">0</strong>
-                                {% if vendido > 0 %}
-                                    <br><small class="text-muted">(vendido: {{ vendido }})</small>
-                                {% else %}
-                                    <br><small class="text-warning">(no ingresado)</small>
-                                {% endif %}
+                                <br><small class="text-danger">✓ Vendido: {{ vendido }} pares</small>
                             {% else %}
                                 <strong class="text-success">{{ producto.stock_actual }}</strong>
                                 {% if vendido > 0 %}
-                                    <br><small class="text-muted">(vendido: {{ vendido }})</small>
+                                    <br><small class="text-muted">Vendido: {{ vendido }}</small>
                                 {% endif %}
                             {% endif %}
                         </td>

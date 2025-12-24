@@ -684,16 +684,28 @@ def registrar_venta():
 
 @app.route('/ubicaciones')
 def ubicaciones():
-    """Vista de ubicaciones"""
+    """Vista de ubicaciones con stock calculado"""
     conn = get_db()
     cursor = conn.cursor()
 
-    cursor.execute('SELECT * FROM ubicaciones ORDER BY nombre')
-    ubicaciones = cursor.fetchall()
+    # Obtener ubicaciones con stock agregado
+    cursor.execute('''
+        SELECT
+            u.*,
+            COALESCE(SUM(CASE WHEN i.tipo_stock = 'general' THEN i.cantidad_pares ELSE 0 END), 0) as stock_general,
+            COALESCE(SUM(CASE WHEN i.tipo_stock = 'pedido' THEN i.cantidad_pares ELSE 0 END), 0) as stock_pedidos,
+            COALESCE(SUM(i.cantidad_pares), 0) as stock_total,
+            COUNT(DISTINCT i.id_producto) as productos_diferentes
+        FROM ubicaciones u
+        LEFT JOIN inventario i ON u.id_ubicacion = i.id_ubicacion
+        GROUP BY u.id_ubicacion
+        ORDER BY u.nombre
+    ''')
+    ubicaciones_list = cursor.fetchall()
 
     conn.close()
 
-    return render_template('ubicaciones.html', ubicaciones=ubicaciones)
+    return render_template('ubicaciones.html', ubicaciones=ubicaciones_list)
 
 # ============================================================================
 # SERVIDOR
