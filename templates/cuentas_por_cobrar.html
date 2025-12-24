@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% block title %}Cuentas por Cobrar - Sistema Calzado{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-cash-coin"></i> Cuentas por Cobrar</h1>
+    <p class="text-muted">Gestión de deudas y cobranzas</p>
+</div>
+
+<!-- Resumen de cuentas -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-primary">
+            <div class="card-body">
+                <h6 class="text-muted">Total por Cobrar</h6>
+                <h3 class="mb-0 text-primary">S/ {{ "%.2f"|format(stats.total_por_cobrar) }}</h3>
+                <small class="text-muted">{{ stats.total_cuentas }} cuenta(s)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body">
+                <h6 class="text-muted">Vencidas</h6>
+                <h3 class="mb-0 text-danger">S/ {{ "%.2f"|format(stats.total_vencido) }}</h3>
+                <small class="text-danger">⚠️ Requieren atención</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-success">
+            <div class="card-body">
+                <h6 class="text-muted">Al Día</h6>
+                <h3 class="mb-0 text-success">S/ {{ "%.2f"|format(stats.total_al_dia) }}</h3>
+                <small class="text-success">✓ En plazo</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <a href="/clientes" class="btn btn-outline-primary btn-sm mb-2">
+                    <i class="bi bi-people"></i> Gestionar Clientes
+                </a>
+                <br>
+                <button class="btn btn-primary btn-sm" onclick="alert('Funcionalidad próximamente')">
+                    <i class="bi bi-plus-circle"></i> Nueva Cuenta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cuentas vencidas -->
+<div class="card mb-4">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Cuentas Vencidas</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Cliente</th>
+                        <th>Concepto</th>
+                        <th>Monto Total</th>
+                        <th>Saldo</th>
+                        <th>Días Mora</th>
+                        <th>F. Vencimiento</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cuenta in cuentas_vencidas %}
+                    <tr>
+                        <td><strong>{{ cuenta.codigo_cuenta }}</strong></td>
+                        <td>
+                            {{ cuenta.nombre }} {{ cuenta.apellido or '' }}
+                            {% if cuenta.nombre_comercial %}
+                            <br><small class="text-muted">{{ cuenta.nombre_comercial }}</small>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ cuenta.concepto }}</small></td>
+                        <td>S/ {{ "%.2f"|format(cuenta.monto_total) }}</td>
+                        <td class="text-danger"><strong>S/ {{ "%.2f"|format(cuenta.saldo_pendiente) }}</strong></td>
+                        <td>
+                            <span class="badge bg-danger">{{ cuenta.dias_mora }} días</span>
+                        </td>
+                        <td><small>{{ cuenta.fecha_vencimiento }}</small></td>
+                        <td>
+                            <button class="btn btn-sm btn-success" onclick="registrarPago({{ cuenta.id_cuenta }})">
+                                <i class="bi bi-cash"></i> Pagar
+                            </button>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-success">
+                            ✓ No hay cuentas vencidas
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Top deudores -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-graph-down"></i> Clientes con Mayor Deuda</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Cliente</th>
+                        <th>Deuda Total</th>
+                        <th>Cuentas Pendientes</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in top_deudores %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>
+                            {{ cliente.nombre }} {{ cliente.apellido or '' }}
+                            {% if cliente.nombre_comercial %}
+                            <br><small class="text-muted">{{ cliente.nombre_comercial }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-warning"><strong>S/ {{ "%.2f"|format(cliente.deuda_total) }}</strong></td>
+                        <td>{{ cliente.num_cuentas }}</td>
+                        <td>
+                            <a href="/clientes/{{ cliente.id_cliente }}" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-eye"></i> Ver Detalle
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<script>
+function registrarPago(idCuenta) {
+    // TODO: Implementar modal de registro de pago
+    alert('Funcionalidad de pago en desarrollo. ID Cuenta: ' + idCuenta);
+}
+</script>
+
+{% endblock %}

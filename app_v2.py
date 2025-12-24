@@ -708,6 +708,235 @@ def ubicaciones():
     return render_template('ubicaciones.html', ubicaciones=ubicaciones_list)
 
 # ============================================================================
+# MÓDULO: CUENTAS POR COBRAR
+# ============================================================================
+
+@app.route('/cuentas-por-cobrar')
+def cuentas_por_cobrar():
+    """Dashboard de cuentas por cobrar"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Estadísticas generales
+    cursor.execute('''
+        SELECT
+            COUNT(*) as total_cuentas,
+            COALESCE(SUM(saldo_pendiente), 0) as total_por_cobrar,
+            COALESCE(SUM(CASE WHEN estado = 'vencida' THEN saldo_pendiente ELSE 0 END), 0) as total_vencido,
+            COALESCE(SUM(CASE WHEN estado = 'pendiente' THEN saldo_pendiente ELSE 0 END), 0) as total_al_dia
+        FROM cuentas_por_cobrar
+        WHERE saldo_pendiente > 0
+    ''')
+    stats = dict(cursor.fetchone())
+
+    # Cuentas vencidas
+    cursor.execute('''
+        SELECT
+            c.*,
+            cl.nombre,
+            cl.apellido,
+            cl.nombre_comercial
+        FROM cuentas_por_cobrar c
+        JOIN clientes cl ON c.id_cliente = cl.id_cliente
+        WHERE c.estado = 'vencida' AND c.saldo_pendiente > 0
+        ORDER BY c.dias_mora DESC, c.saldo_pendiente DESC
+        LIMIT 10
+    ''')
+    cuentas_vencidas = cursor.fetchall()
+
+    # Clientes con mayor deuda
+    cursor.execute('''
+        SELECT
+            cl.id_cliente,
+            cl.nombre,
+            cl.apellido,
+            cl.nombre_comercial,
+            COALESCE(SUM(c.saldo_pendiente), 0) as deuda_total,
+            COUNT(c.id_cuenta) as num_cuentas
+        FROM clientes cl
+        LEFT JOIN cuentas_por_cobrar c ON cl.id_cliente = c.id_cliente
+        WHERE c.saldo_pendiente > 0
+        GROUP BY cl.id_cliente
+        ORDER BY deuda_total DESC
+        LIMIT 5
+    ''')
+    top_deudores = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('cuentas_por_cobrar.html',
+                         stats=stats,
+                         cuentas_vencidas=cuentas_vencidas,
+                         top_deudores=top_deudores)
+
+@app.route('/clientes')
+def clientes():
+    """Lista de clientes"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    cursor.execute('''
+        SELECT
+            cl.*,
+            COALESCE(SUM(c.saldo_pendiente), 0) as deuda_total,
+            COUNT(c.id_cuenta) as num_cuentas_pendientes
+        FROM clientes cl
+        LEFT JOIN cuentas_por_cobrar c ON cl.id_cliente = c.id_cliente AND c.saldo_pendiente > 0
+        GROUP BY cl.id_cliente
+        ORDER BY cl.fecha_registro DESC
+    ''')
+    clientes_list = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('clientes.html', clientes=clientes_list)
+
+@app.route('/api/clientes/crear', methods=['POST'])
+def crear_cliente():
+    """API para crear nuevo cliente"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO clientes
+            (nombre, apellido, nombre_comercial, tipo_documento, numero_documento,
+             telefono, email, direccion, limite_credito, dias_credito, observaciones)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data['nombre'],
+            data.get('apellido', ''),
+            data.get('nombre_comercial', ''),
+            data.get('tipo_documento', 'DNI'),
+            data.get('numero_documento', ''),
+            data.get('telefono', ''),
+            data.get('email', ''),
+            data.get('direccion', ''),
+            data.get('limite_credito', 0),
+            data.get('dias_credito', 30),
+            data.get('observaciones', '')
+        ))
+
+        id_cliente = cursor.lastrowid
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Cliente creado exitosamente',
+            'id_cliente': id_cliente
+        })
+
+    except sqlite3.IntegrityError:
+        return jsonify({'success': False, 'error': 'El número de documento ya existe'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/cuentas/crear', methods=['POST'])
+def crear_cuenta():
+    """API para crear nueva cuenta por cobrar"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Generar código de cuenta
+        cursor.execute('SELECT MAX(id_cuenta) FROM cuentas_por_cobrar')
+        max_id = cursor.fetchone()[0] or 0
+        codigo_cuenta = f"CC-{max_id + 1:06d}"
+
+        saldo_pendiente = data['monto_total']
+
+        cursor.execute('''
+            INSERT INTO cuentas_por_cobrar
+            (id_cliente, id_venta, codigo_cuenta, concepto, monto_total, saldo_pendiente,
+             fecha_emision, fecha_vencimiento, observaciones)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data['id_cliente'],
+            data.get('id_venta'),
+            codigo_cuenta,
+            data['concepto'],
+            data['monto_total'],
+            saldo_pendiente,
+            data['fecha_emision'],
+            data['fecha_vencimiento'],
+            data.get('observaciones', '')
+        ))
+
+        id_cuenta = cursor.lastrowid
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Cuenta creada exitosamente',
+            'id_cuenta': id_cuenta,
+            'codigo_cuenta': codigo_cuenta
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/pagos/registrar', methods=['POST'])
+def registrar_pago():
+    """API para registrar pago"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Generar código de pago
+        cursor.execute('SELECT MAX(id_pago) FROM pagos')
+        max_id = cursor.fetchone()[0] or 0
+        codigo_pago = f"PAG-{max_id + 1:06d}"
+
+        # Insertar pago
+        cursor.execute('''
+            INSERT INTO pagos
+            (id_cuenta, codigo_pago, monto_pago, metodo_pago, fecha_pago,
+             numero_comprobante, observaciones)
+            VALUES (?, ?, ?, ?, ?, ?, ?)
+        ''', (
+            data['id_cuenta'],
+            codigo_pago,
+            data['monto_pago'],
+            data.get('metodo_pago', 'efectivo'),
+            data['fecha_pago'],
+            data.get('numero_comprobante', ''),
+            data.get('observaciones', '')
+        ))
+
+        # Actualizar cuenta por cobrar
+        cursor.execute('''
+            UPDATE cuentas_por_cobrar
+            SET monto_pagado = monto_pagado + ?,
+                saldo_pendiente = monto_total - (monto_pagado + ?),
+                estado = CASE
+                    WHEN monto_total - (monto_pagado + ?) <= 0 THEN 'pagada'
+                    WHEN DATE('now') > fecha_vencimiento THEN 'vencida'
+                    ELSE 'pendiente'
+                END
+            WHERE id_cuenta = ?
+        ''', (data['monto_pago'], data['monto_pago'], data['monto_pago'], data['id_cuenta']))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Pago registrado exitosamente',
+            'codigo_pago': codigo_pago
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+# ============================================================================
 # SERVIDOR
 # ============================================================================
 
