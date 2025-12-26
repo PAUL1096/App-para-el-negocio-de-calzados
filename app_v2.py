@@ -863,8 +863,9 @@ def registrar_venta_directa():
 
         # Generar código de venta único
         fecha_hoy = datetime.now().strftime('%Y%m%d')
+        # Formato: VD20251226-001 (VD = 2 chars, fecha = 8 chars, guion = 1 char = total 11, número empieza en posición 12)
         cursor.execute('''
-            SELECT COALESCE(MAX(CAST(SUBSTR(codigo_venta, 11) AS INTEGER)), 0) as ultimo
+            SELECT COALESCE(MAX(CAST(SUBSTR(codigo_venta, 12) AS INTEGER)), 0) as ultimo
             FROM ventas_v2
             WHERE codigo_venta LIKE ?
         ''', (f"VD{fecha_hoy}-%",))
