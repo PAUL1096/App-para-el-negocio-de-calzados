@@ -372,14 +372,16 @@ document.getElementById('formVenta').addEventListener('submit', function(e) {
     .then(response => response.json())
     .then(data => {
         if (data.success) {
-            alert(`✓ Venta registrada exitosamente\nCódigo: ${data.codigo_venta}\nProductos: ${data.total_productos}\nTotal: S/ ${data.total_final.toFixed(2)}`);
+            const total = parseFloat(data.total_final) || 0;
+            alert(`✓ Venta registrada exitosamente\n\nCódigo: ${data.codigo_venta}\nProductos: ${data.total_productos || carrito.length}\nTotal: S/ ${total.toFixed(2)}`);
             window.location.href = '/ventas';
         } else {
-            alert('Error: ' + data.error);
+            alert('❌ Error al registrar venta:\n\n' + (data.error || 'Error desconocido'));
         }
     })
     .catch(error => {
-        alert('Error al registrar venta: ' + error);
+        console.error('Error completo:', error);
+        alert('❌ Error de conexión al registrar venta:\n\n' + error.message);
     });
 });
 </script>

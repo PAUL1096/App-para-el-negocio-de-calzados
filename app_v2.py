@@ -994,11 +994,14 @@ def registrar_venta_directa():
             print(f"⚠️  ADVERTENCIA: Venta {codigo_venta} a crédito sin cliente registrado")
 
         conn.commit()
+        conn.close()
 
         return jsonify({
             'success': True,
-            'message': 'Venta directa registrada exitosamente',
-            'codigo_venta': codigo_venta
+            'message': f'Venta directa registrada exitosamente con {len(productos)} producto(s)',
+            'codigo_venta': codigo_venta,
+            'total_productos': len(productos),
+            'total_final': total_final
         })
 
     except Exception as e:
