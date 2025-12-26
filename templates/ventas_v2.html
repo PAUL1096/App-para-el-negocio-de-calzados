@@ -4,17 +4,12 @@
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
         <h1><i class="bi bi-cart-check"></i> Registro de Ventas</h1>
-        <p class="text-muted">Ventas desde preparaciones o inventario directo</p>
+        <p class="text-muted">Sistema de ventas con carrito multi-producto</p>
     </div>
     <div>
-        <div class="btn-group mb-2">
-            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPreparacion">
-                <i class="bi bi-box-seam"></i> Venta desde Preparación
-            </button>
-            <a href="/ventas/nueva-directa" class="btn btn-success">
-                <i class="bi bi-lightning-charge"></i> Venta Directa
-            </a>
-        </div>
+        <a href="/ventas/nueva-directa" class="btn btn-success btn-lg mb-2">
+            <i class="bi bi-cart-plus"></i> Nueva Venta
+        </a>
         <br>
         <a href="/cuentas-por-cobrar" class="btn btn-outline-warning btn-sm">
             <i class="bi bi-cash-coin"></i> Ver Cuentas por Cobrar
@@ -24,11 +19,12 @@
 
 <!-- Banner informativo -->
 <div class="alert alert-info mb-3">
-    <strong><i class="bi bi-info-circle"></i> Sistema Integrado de Ventas y Cobranzas:</strong>
+    <strong><i class="bi bi-info-circle"></i> Sistema de Ventas Multi-Producto:</strong>
     <ul class="mb-0 mt-2">
-        <li><strong>Venta desde Preparación:</strong> Ventas planificadas para días específicos (flujo tradicional)</li>
-        <li><strong>Venta Directa:</strong> Ventas inmediatas desde inventario en Casa, Tienda Calzaplaza o Tienda CalzaPe</li>
-        <li><strong>Ventas a Crédito:</strong> Al seleccionar estado "A Crédito", se crea automáticamente una cuenta por cobrar vinculada</li>
+        <li><strong>Preparación:</strong> Alistar mercadería para transportar (NO es una venta)</li>
+        <li><strong>Venta Directa:</strong> Venta con múltiples productos desde inventario (carrito de compras)</li>
+        <li><strong>Múltiples Productos:</strong> Ahora puedes agregar varios productos a una sola venta</li>
+        <li><strong>Ventas a Crédito:</strong> Al seleccionar "A Crédito", se crea automáticamente una cuenta por cobrar</li>
     </ul>
 </div>
 
@@ -41,11 +37,11 @@
                         <th>Código</th>
                         <th>Fecha</th>
                         <th>Cliente</th>
-                        <th>Producto</th>
-                        <th>Pares</th>
-                        <th>Precio Unit.</th>
+                        <th>Productos</th>
+                        <th>Total Pares</th>
                         <th>Total</th>
                         <th>Estado</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -55,18 +51,24 @@
                         <td>{{ venta.fecha_venta }}</td>
                         <td>{{ venta.cliente }}</td>
                         <td>
-                            <span class="badge bg-secondary">{{ venta.codigo_interno }}</span><br>
-                            <small>{{ venta.cuero }} {{ venta.color_cuero }}</small>
+                            <span class="badge bg-info">{{ venta.total_productos or 0 }} producto(s)</span><br>
+                            <small class="text-muted">{{ venta.productos_codigos or 'Sin detalle' }}</small>
                         </td>
-                        <td>{{ venta.cantidad_pares }}</td>
-                        <td>${{ "%.2f"|format(venta.precio_unitario) }}</td>
-                        <td><strong>${{ "%.2f"|format(venta.total_final) }}</strong></td>
+                        <td><strong>{{ venta.total_pares or 0 }}</strong> pares</td>
+                        <td><strong>S/ {{ "%.2f"|format(venta.total_final) }}</strong></td>
                         <td>
                             {% if venta.estado_pago == 'pagado' %}
                                 <span class="badge bg-success">Pagado</span>
+                            {% elif venta.estado_pago == 'credito' %}
+                                <span class="badge bg-warning">A Crédito</span>
                             {% else %}
-                                <span class="badge bg-warning">{{ venta.estado_pago }}</span>
+                                <span class="badge bg-secondary">{{ venta.estado_pago }}</span>
                             {% endif %}
+                        </td>
+                        <td>
+                            <a href="/ventas/detalle/{{ venta.id_venta }}" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-eye"></i> Ver
+                            </a>
                         </td>
                     </tr>
                     {% endfor %}
@@ -79,57 +81,4 @@
     </div>
 </div>
 
-<!-- Modal de preparaciones disponibles (del template ventas.html anterior) -->
-<div class="modal fade" id="modalSeleccionarPreparacion" tabindex="-1">
-    <div class="modal-dialog modal-lg">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h5 class="modal-title"><i class="bi bi-box-seam"></i> Seleccionar Preparación</h5>
-                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-            </div>
-            <div class="modal-body">
-                <p class="text-muted mb-3">Selecciona una preparación con stock disponible:</p>
-                <div class="table-responsive">
-                    <table class="table table-hover">
-                        <thead>
-                            <tr>
-                                <th>Código</th>
-                                <th>Fecha</th>
-                                <th>Día Venta</th>
-                                <th>Pares Disponibles</th>
-                                <th>Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if preparaciones_disponibles %}
-                                {% for prep in preparaciones_disponibles %}
-                                <tr>
-                                    <td><strong>{{ prep.codigo_preparacion }}</strong></td>
-                                    <td>{{ prep.fecha_preparacion }}</td>
-                                    <td><span class="badge bg-primary">{{ prep.dia_venta }}</span></td>
-                                    <td><span class="badge bg-success">{{ prep.pendiente_vender }} pares</span></td>
-                                    <td>
-                                        <a href="/ventas/nueva/{{ prep.id_preparacion }}" class="btn btn-sm btn-primary">
-                                            <i class="bi bi-cart-plus"></i> Registrar Venta
-                                        </a>
-                                    </td>
-                                </tr>
-                                {% endfor %}
-                            {% else %}
-                                <tr>
-                                    <td colspan="5" class="text-center text-muted py-4">
-                                        No hay preparaciones con stock disponible.<br>
-                                        <a href="/preparaciones/nueva" class="btn btn-sm btn-primary mt-2">
-                                            <i class="bi bi-plus-circle"></i> Crear Preparación
-                                        </a>
-                                    </td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
 {% endblock %}
