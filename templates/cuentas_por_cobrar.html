@@ -238,8 +238,13 @@
 
                     <div class="mb-3">
                         <label class="form-label">Monto a Pagar (S/) <span class="text-danger">*</span></label>
-                        <input type="number" class="form-control" id="monto_pago" name="monto_pago"
-                               step="0.01" min="0.01" required>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="monto_pago" name="monto_pago"
+                                   step="0.01" min="0.01" required>
+                            <button type="button" class="btn btn-outline-success" onclick="pagarSaldoCompleto()">
+                                <i class="bi bi-check-all"></i> Pagar Saldo Completo
+                            </button>
+                        </div>
                         <small class="text-muted">Saldo pendiente: S/ <span id="saldo-pendiente">0.00</span></small>
                     </div>
 
@@ -343,6 +348,9 @@ function registrarPago(idCuenta) {
     document.getElementById('saldo-pendiente').textContent = saldo;
     document.getElementById('monto_pago').max = parseFloat(saldo);
 
+    // Limpiar campo de monto (para que usuario decida si pago parcial o completo)
+    document.getElementById('monto_pago').value = '';
+
     document.getElementById('info-cuenta-pago').innerHTML = `
         <strong>Cuenta:</strong> ${codigo}<br>
         <strong>Cliente:</strong> ${cliente}<br>
@@ -352,6 +360,12 @@ function registrarPago(idCuenta) {
     // Abrir modal
     const modal = new bootstrap.Modal(document.getElementById('modalRegistrarPago'));
     modal.show();
+}
+
+// Pagar saldo completo
+function pagarSaldoCompleto() {
+    const saldo = document.getElementById('saldo-pendiente').textContent;
+    document.getElementById('monto_pago').value = parseFloat(saldo).toFixed(2);
 }
 
 // Guardar pago

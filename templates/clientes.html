@@ -6,7 +6,7 @@
         <h1><i class="bi bi-people"></i> Gestión de Clientes</h1>
         <p class="text-muted">Administra tu cartera de clientes</p>
     </div>
-    <button class="btn btn-primary" onclick="alert('Modal de nuevo cliente próximamente')">
+    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevoCliente">
         <i class="bi bi-plus-circle"></i> Nuevo Cliente
     </button>
 </div>
@@ -86,5 +86,145 @@
         Total de clientes: <strong>{{ clientes|length }}</strong>
     </div>
 </div>
+
+<!-- Modal: Nuevo Cliente -->
+<div class="modal fade" id="modalNuevoCliente" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-person-plus"></i> Nuevo Cliente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuevoCliente">
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="nombre" name="nombre" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Apellido</label>
+                            <input type="text" class="form-control" id="apellido" name="apellido">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre Comercial / Empresa</label>
+                        <input type="text" class="form-control" id="nombre_comercial" name="nombre_comercial"
+                               placeholder="Opcional - para clientes empresariales">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Tipo Documento</label>
+                            <select class="form-select" id="tipo_documento" name="tipo_documento">
+                                <option value="DNI">DNI</option>
+                                <option value="RUC">RUC</option>
+                                <option value="CE">Carnet de Extranjería</option>
+                                <option value="PASAPORTE">Pasaporte</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Número de Documento</label>
+                            <input type="text" class="form-control" id="numero_documento" name="numero_documento">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" id="telefono" name="telefono"
+                                   placeholder="Ej: 987654321">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="email" name="email"
+                                   placeholder="ejemplo@correo.com">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Dirección</label>
+                        <textarea class="form-control" id="direccion" name="direccion" rows="2"
+                                  placeholder="Dirección completa del cliente"></textarea>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="bi bi-credit-card"></i> Configuración de Crédito</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Límite de Crédito (S/)</label>
+                            <input type="number" class="form-control" id="limite_credito" name="limite_credito"
+                                   step="0.01" min="0" value="0">
+                            <small class="text-muted">Monto máximo de crédito permitido</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Días de Crédito</label>
+                            <input type="number" class="form-control" id="dias_credito" name="dias_credito"
+                                   min="0" value="30">
+                            <small class="text-muted">Plazo para pago (días)</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones" name="observaciones" rows="2"
+                                  placeholder="Notas adicionales sobre el cliente"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarNuevoCliente()">
+                    <i class="bi bi-save"></i> Crear Cliente
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function guardarNuevoCliente() {
+    const form = document.getElementById('formNuevoCliente');
+
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const data = {
+        nombre: document.getElementById('nombre').value,
+        apellido: document.getElementById('apellido').value,
+        nombre_comercial: document.getElementById('nombre_comercial').value,
+        tipo_documento: document.getElementById('tipo_documento').value,
+        numero_documento: document.getElementById('numero_documento').value,
+        telefono: document.getElementById('telefono').value,
+        email: document.getElementById('email').value,
+        direccion: document.getElementById('direccion').value,
+        limite_credito: parseFloat(document.getElementById('limite_credito').value) || 0,
+        dias_credito: parseInt(document.getElementById('dias_credito').value) || 30,
+        observaciones: document.getElementById('observaciones').value
+    };
+
+    fetch('/api/clientes/crear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✓ Cliente creado exitosamente\nID: ' + data.id_cliente);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error al crear cliente: ' + error);
+    });
+}
+</script>
 
 {% endblock %}
