@@ -673,11 +673,16 @@ def registrar_venta():
             cantidad_docenas = prod['cantidad_pares'] / prod.get('pares_por_docena', 12)
             subtotal_linea = prod['cantidad_pares'] * prod['precio_unitario']
 
-            # Obtener info del producto
+            # Obtener info del producto (con JOIN a variantes_base para codigo_interno)
             cursor.execute('''
-                SELECT codigo_interno, cuero, color_cuero, serie_tallas
-                FROM productos_producidos
-                WHERE id_producto = ?
+                SELECT
+                    vb.codigo_interno,
+                    p.cuero,
+                    p.color_cuero,
+                    p.serie_tallas
+                FROM productos_producidos p
+                JOIN variantes_base vb ON p.id_variante_base = vb.id_variante_base
+                WHERE p.id_producto = ?
             ''', (prod['id_producto'],))
             producto_info = cursor.fetchone()
 
@@ -709,6 +714,7 @@ def registrar_venta():
                 ''', (prod['cantidad_pares'], data['id_preparacion'], prod['id_producto']))
 
         # Si es venta a crédito, crear cuenta por cobrar automáticamente
+        # NOTA: Solo se crea cuenta por cobrar si hay un cliente registrado
         if data.get('estado_pago') == 'credito' and data.get('id_cliente'):
             # Obtener días de crédito del cliente
             cursor.execute('SELECT dias_credito FROM clientes WHERE id_cliente = ?', (data['id_cliente'],))
@@ -736,6 +742,9 @@ def registrar_venta():
                 dias_credito,
                 f"Cuenta generada automáticamente desde venta {codigo_venta}"
             ))
+        elif data.get('estado_pago') == 'credito' and not data.get('id_cliente'):
+            # Advertencia: Venta a crédito sin cliente registrado
+            print(f"⚠️  ADVERTENCIA: Venta {codigo_venta} a crédito sin cliente registrado")
 
         conn.commit()
         conn.close()
@@ -912,11 +921,16 @@ def registrar_venta_directa():
             cantidad_docenas = prod['cantidad_pares'] / prod.get('pares_por_docena', 12)
             subtotal_linea = prod['cantidad_pares'] * prod['precio_unitario']
 
-            # Obtener info del producto
+            # Obtener info del producto (con JOIN a variantes_base para codigo_interno)
             cursor.execute('''
-                SELECT codigo_interno, cuero, color_cuero, serie_tallas
-                FROM productos_producidos
-                WHERE id_producto = ?
+                SELECT
+                    vb.codigo_interno,
+                    p.cuero,
+                    p.color_cuero,
+                    p.serie_tallas
+                FROM productos_producidos p
+                JOIN variantes_base vb ON p.id_variante_base = vb.id_variante_base
+                WHERE p.id_producto = ?
             ''', (prod['id_producto'],))
             producto_info = cursor.fetchone()
 
@@ -947,6 +961,7 @@ def registrar_venta_directa():
             ''', (prod['cantidad_pares'], prod['id_inventario']))
 
         # Si es venta a crédito, crear cuenta por cobrar automáticamente
+        # NOTA: Solo se crea cuenta por cobrar si hay un cliente registrado
         if data.get('estado_pago') == 'credito' and data.get('id_cliente'):
             # Obtener días de crédito del cliente
             cursor.execute('SELECT dias_credito FROM clientes WHERE id_cliente = ?', (data['id_cliente'],))
@@ -973,6 +988,9 @@ def registrar_venta_directa():
                 dias_credito,
                 f"Cuenta generada automáticamente desde venta {codigo_venta}"
             ))
+        elif data.get('estado_pago') == 'credito' and not data.get('id_cliente'):
+            # Advertencia: Venta a crédito sin cliente registrado
+            print(f"⚠️  ADVERTENCIA: Venta {codigo_venta} a crédito sin cliente registrado")
 
         conn.commit()
 

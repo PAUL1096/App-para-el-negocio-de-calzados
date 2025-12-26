@@ -60,9 +60,9 @@
                 <form id="formVenta">
                     <!-- Cliente -->
                     <div class="mb-3">
-                        <label class="form-label">Cliente <span class="text-danger">*</span></label>
-                        <select class="form-select" id="id_cliente" name="id_cliente" required onchange="seleccionarCliente()">
-                            <option value="">-- Seleccionar Cliente --</option>
+                        <label class="form-label">Cliente</label>
+                        <select class="form-select" id="id_cliente" name="id_cliente" onchange="seleccionarCliente()">
+                            <option value="" selected>Cliente Desconocido</option>
                             {% for cliente in clientes %}
                             <option value="{{ cliente.id_cliente }}"
                                     data-nombre="{{ cliente.nombre }} {{ cliente.apellido or '' }}">
@@ -71,7 +71,8 @@
                             </option>
                             {% endfor %}
                         </select>
-                        <input type="hidden" id="cliente_nombre" name="cliente">
+                        <input type="hidden" id="cliente_nombre" name="cliente" value="Cliente Desconocido">
+                        <small class="form-text text-muted">Opcional - Deja "Cliente Desconocido" si no conoces al cliente</small>
                     </div>
 
                     <hr>
@@ -165,7 +166,8 @@ function seleccionarCliente() {
         const nombreCompleto = option.dataset.nombre;
         document.getElementById('cliente_nombre').value = nombreCompleto;
     } else {
-        document.getElementById('cliente_nombre').value = '';
+        // Cliente desconocido
+        document.getElementById('cliente_nombre').value = 'Cliente Desconocido';
     }
 }
 
@@ -351,13 +353,9 @@ document.getElementById('formVenta').addEventListener('submit', function(e) {
     }
 
     const idCliente = document.getElementById('id_cliente').value;
-    if (!idCliente) {
-        alert('Debe seleccionar un cliente');
-        return;
-    }
 
     const formData = {
-        id_cliente: parseInt(idCliente),
+        id_cliente: idCliente ? parseInt(idCliente) : null,
         cliente: document.getElementById('cliente_nombre').value,
         productos: carrito,
         descuento_global: parseFloat(document.getElementById('descuento_global').value) || 0,
