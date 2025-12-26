@@ -598,11 +598,16 @@ def venta_nueva(id_preparacion):
 
     productos_disponibles = cursor.fetchall()
 
+    # Obtener lista de clientes para el selector
+    cursor.execute('SELECT * FROM clientes WHERE activo = 1 ORDER BY nombre')
+    clientes = cursor.fetchall()
+
     conn.close()
 
     return render_template('venta_nueva_v2.html',
                          preparacion=preparacion,
-                         productos_disponibles=productos_disponibles)
+                         productos_disponibles=productos_disponibles,
+                         clientes=clientes)
 
 @app.route('/api/ventas/registrar', methods=['POST'])
 def registrar_venta():
@@ -636,14 +641,15 @@ def registrar_venta():
         # Crear venta
         cursor.execute('''
             INSERT INTO ventas_v2
-            (codigo_venta, id_preparacion, id_producto, cliente, cantidad_pares,
+            (codigo_venta, id_preparacion, id_producto, id_cliente, cliente, cantidad_pares,
              cantidad_docenas, precio_unitario, subtotal, descuento, total_final,
              estado_pago, metodo_pago, observaciones)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             codigo_venta,
             data['id_preparacion'],
             data['id_producto'],
+            data.get('id_cliente'),
             data['cliente'],
             data['cantidad_pares'],
             cantidad_docenas,
@@ -656,12 +662,43 @@ def registrar_venta():
             data.get('observaciones', '')
         ))
 
+        id_venta = cursor.lastrowid
+
         # Actualizar preparaciones_detalle
         cursor.execute('''
             UPDATE preparaciones_detalle
             SET cantidad_vendida = cantidad_vendida + ?
             WHERE id_preparacion = ? AND id_producto = ?
         ''', (data['cantidad_pares'], data['id_preparacion'], data['id_producto']))
+
+        # Si es venta a crédito, crear cuenta por cobrar automáticamente
+        if data.get('estado_pago') == 'credito' and data.get('id_cliente'):
+            # Obtener días de crédito del cliente
+            cursor.execute('SELECT dias_credito FROM clientes WHERE id_cliente = ?', (data['id_cliente'],))
+            cliente_data = cursor.fetchone()
+            dias_credito = cliente_data['dias_credito'] if cliente_data else 30
+
+            # Generar código de cuenta
+            cursor.execute('SELECT MAX(id_cuenta) FROM cuentas_por_cobrar')
+            max_id = cursor.fetchone()[0] or 0
+            codigo_cuenta = f"CC-{max_id + 1:06d}"
+
+            # Crear cuenta por cobrar
+            cursor.execute('''
+                INSERT INTO cuentas_por_cobrar
+                (id_cliente, id_venta, codigo_cuenta, concepto, monto_total, saldo_pendiente,
+                 fecha_emision, fecha_vencimiento, observaciones)
+                VALUES (?, ?, ?, ?, ?, ?, DATE('now'), DATE('now', '+' || ? || ' days'), ?)
+            ''', (
+                data['id_cliente'],
+                id_venta,
+                codigo_cuenta,
+                f'Venta {codigo_venta}',
+                total_final,
+                total_final,
+                dias_credito,
+                f"Cuenta generada automáticamente desde venta {codigo_venta}"
+            ))
 
         conn.commit()
         conn.close()
@@ -692,11 +729,16 @@ def venta_directa_nueva():
     cursor.execute('SELECT * FROM ubicaciones WHERE activo = 1 ORDER BY nombre')
     ubicaciones = cursor.fetchall()
 
+    # Obtener lista de clientes para el selector
+    cursor.execute('SELECT * FROM clientes WHERE activo = 1 ORDER BY nombre')
+    clientes = cursor.fetchall()
+
     conn.close()
 
     fecha_hoy = datetime.now().strftime('%Y-%m-%d')
     return render_template('venta_directa_nueva.html',
                          ubicaciones=ubicaciones,
+                         clientes=clientes,
                          fecha_hoy=fecha_hoy)
 
 @app.route('/api/inventario/por-ubicacion/<int:id_ubicacion>')
@@ -798,13 +840,14 @@ def registrar_venta_directa():
         # Crear venta (sin id_preparacion)
         cursor.execute('''
             INSERT INTO ventas_v2
-            (codigo_venta, id_preparacion, id_producto, cliente, cantidad_pares,
+            (codigo_venta, id_preparacion, id_producto, id_cliente, cliente, cantidad_pares,
              cantidad_docenas, precio_unitario, subtotal, descuento, total_final,
              estado_pago, metodo_pago, observaciones)
-            VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+            VALUES (?, NULL, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             codigo_venta,
             data['id_producto'],
+            data.get('id_cliente'),
             data['cliente'],
             data['cantidad_pares'],
             cantidad_docenas,
@@ -817,6 +860,8 @@ def registrar_venta_directa():
             data.get('observaciones', 'Venta directa desde inventario')
         ))
 
+        id_venta = cursor.lastrowid
+
         # Descontar del inventario
         cursor.execute('''
             UPDATE inventario
@@ -824,23 +869,33 @@ def registrar_venta_directa():
             WHERE id_inventario = ?
         ''', (data['cantidad_pares'], data['id_inventario']))
 
-        # Si hay cliente y es a crédito, crear cuenta por cobrar
+        # Si es venta a crédito, crear cuenta por cobrar automáticamente
         if data.get('estado_pago') == 'credito' and data.get('id_cliente'):
+            # Obtener días de crédito del cliente
+            cursor.execute('SELECT dias_credito FROM clientes WHERE id_cliente = ?', (data['id_cliente'],))
+            cliente_data = cursor.fetchone()
+            dias_credito = cliente_data['dias_credito'] if cliente_data else 30
+
+            # Generar código de cuenta
             cursor.execute('SELECT MAX(id_cuenta) FROM cuentas_por_cobrar')
             max_id = cursor.fetchone()[0] or 0
             codigo_cuenta = f"CC-{max_id + 1:06d}"
 
+            # Crear cuenta por cobrar
             cursor.execute('''
                 INSERT INTO cuentas_por_cobrar
-                (id_cliente, codigo_cuenta, concepto, monto_total, saldo_pendiente,
-                 fecha_emision, fecha_vencimiento)
-                VALUES (?, ?, ?, ?, ?, DATE('now'), DATE('now', '+30 days'))
+                (id_cliente, id_venta, codigo_cuenta, concepto, monto_total, saldo_pendiente,
+                 fecha_emision, fecha_vencimiento, observaciones)
+                VALUES (?, ?, ?, ?, ?, ?, DATE('now'), DATE('now', '+' || ? || ' days'), ?)
             ''', (
                 data['id_cliente'],
+                id_venta,
                 codigo_cuenta,
                 f'Venta {codigo_venta}',
                 total_final,
-                total_final
+                total_final,
+                dias_credito,
+                f"Cuenta generada automáticamente desde venta {codigo_venta}"
             ))
 
         conn.commit()
@@ -1109,6 +1164,34 @@ def registrar_pago():
                 END
             WHERE id_cuenta = ?
         ''', (data['monto_pago'], data['monto_pago'], data['monto_pago'], data['id_cuenta']))
+
+        # Obtener datos de la cuenta para actualizar la venta vinculada
+        cursor.execute('''
+            SELECT id_venta, saldo_pendiente, monto_total
+            FROM cuentas_por_cobrar
+            WHERE id_cuenta = ?
+        ''', (data['id_cuenta'],))
+
+        cuenta = cursor.fetchone()
+
+        # Si la cuenta está vinculada a una venta, actualizar su estado
+        if cuenta and cuenta['id_venta']:
+            nuevo_saldo = cuenta['monto_total'] - (cuenta['saldo_pendiente'] + data['monto_pago'])
+
+            if nuevo_saldo <= 0:
+                # Deuda completamente pagada
+                cursor.execute('''
+                    UPDATE ventas_v2
+                    SET estado_pago = 'pagado'
+                    WHERE id_venta = ?
+                ''', (cuenta['id_venta'],))
+            else:
+                # Pago parcial
+                cursor.execute('''
+                    UPDATE ventas_v2
+                    SET estado_pago = 'parcial'
+                    WHERE id_venta = ?
+                ''', (cuenta['id_venta'],))
 
         conn.commit()
         conn.close()

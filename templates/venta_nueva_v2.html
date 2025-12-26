@@ -22,9 +22,23 @@
                             <input type="text" class="form-control" value="(se generará automáticamente)" disabled>
                         </div>
                         <div class="col-md-6">
-                            <label for="cliente" class="form-label">Cliente *</label>
-                            <input type="text" class="form-control" id="cliente" name="cliente" required
-                                   placeholder="Nombre del cliente">
+                            <label for="id_cliente" class="form-label">Cliente *</label>
+                            <select class="form-select" id="id_cliente" name="id_cliente" required onchange="seleccionarCliente()">
+                                <option value="">-- Seleccionar Cliente --</option>
+                                {% for cliente in clientes %}
+                                <option value="{{ cliente.id_cliente }}"
+                                        data-nombre="{{ cliente.nombre }} {{ cliente.apellido or '' }}"
+                                        data-limite="{{ cliente.limite_credito }}"
+                                        data-dias="{{ cliente.dias_credito }}">
+                                    {{ cliente.nombre }} {{ cliente.apellido or '' }}
+                                    {% if cliente.nombre_comercial %}({{ cliente.nombre_comercial }}){% endif %}
+                                </option>
+                                {% endfor %}
+                            </select>
+                            <input type="hidden" id="cliente_nombre" name="cliente">
+                            <small class="text-muted">
+                                <a href="/clientes" target="_blank">+ Crear nuevo cliente</a>
+                            </small>
                         </div>
                     </div>
 
@@ -83,6 +97,7 @@
                             <select class="form-select" id="estado_pago" name="estado_pago">
                                 <option value="pendiente">Pendiente</option>
                                 <option value="pagado">Pagado</option>
+                                <option value="credito">A Crédito</option>
                                 <option value="parcial">Parcial</option>
                             </select>
                         </div>
@@ -179,6 +194,19 @@
 </div>
 
 <script>
+// Función para seleccionar cliente y guardar nombre
+function seleccionarCliente() {
+    const select = document.getElementById('id_cliente');
+    const option = select.options[select.selectedIndex];
+
+    if (select.value) {
+        const nombreCompleto = option.dataset.nombre;
+        document.getElementById('cliente_nombre').value = nombreCompleto;
+    } else {
+        document.getElementById('cliente_nombre').value = '';
+    }
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     const selectProducto = document.getElementById('id_producto');
     const inputCantidad = document.getElementById('cantidad_pares');
@@ -248,7 +276,8 @@ document.addEventListener('DOMContentLoaded', function() {
     // Guardar venta
     document.getElementById('btnGuardarVenta').addEventListener('click', function() {
         const idProducto = document.getElementById('id_producto').value;
-        const cliente = document.getElementById('cliente').value.trim();
+        const idCliente = document.getElementById('id_cliente').value;
+        const clienteNombre = document.getElementById('cliente_nombre').value.trim();
         const cantidad = parseInt(inputCantidad.value) || 0;
         const precio = parseFloat(inputPrecio.value) || 0;
 
@@ -257,8 +286,8 @@ document.addEventListener('DOMContentLoaded', function() {
             alert('Por favor selecciona un producto');
             return;
         }
-        if (!cliente) {
-            alert('Por favor ingresa el nombre del cliente');
+        if (!idCliente) {
+            alert('Por favor selecciona un cliente');
             return;
         }
         if (cantidad <= 0) {
@@ -282,7 +311,8 @@ document.addEventListener('DOMContentLoaded', function() {
         const data = {
             id_preparacion: parseInt(document.getElementById('id_preparacion').value),
             id_producto: parseInt(idProducto),
-            cliente: cliente,
+            id_cliente: parseInt(idCliente),
+            cliente: clienteNombre,
             cantidad_pares: cantidad,
             pares_por_docena: 12,
             precio_unitario: precio,

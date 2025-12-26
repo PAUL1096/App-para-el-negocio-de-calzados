@@ -6,22 +6,29 @@
         <h1><i class="bi bi-cart-check"></i> Registro de Ventas</h1>
         <p class="text-muted">Ventas desde preparaciones o inventario directo</p>
     </div>
-    <div class="btn-group">
-        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPreparacion">
-            <i class="bi bi-box-seam"></i> Venta desde Preparación
-        </button>
-        <a href="/ventas/nueva-directa" class="btn btn-success">
-            <i class="bi bi-lightning-charge"></i> Venta Directa
+    <div>
+        <div class="btn-group mb-2">
+            <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalSeleccionarPreparacion">
+                <i class="bi bi-box-seam"></i> Venta desde Preparación
+            </button>
+            <a href="/ventas/nueva-directa" class="btn btn-success">
+                <i class="bi bi-lightning-charge"></i> Venta Directa
+            </a>
+        </div>
+        <br>
+        <a href="/cuentas-por-cobrar" class="btn btn-outline-warning btn-sm">
+            <i class="bi bi-cash-coin"></i> Ver Cuentas por Cobrar
         </a>
     </div>
 </div>
 
 <!-- Banner informativo -->
 <div class="alert alert-info mb-3">
-    <strong><i class="bi bi-info-circle"></i> Dos formas de vender:</strong>
+    <strong><i class="bi bi-info-circle"></i> Sistema Integrado de Ventas y Cobranzas:</strong>
     <ul class="mb-0 mt-2">
         <li><strong>Venta desde Preparación:</strong> Ventas planificadas para días específicos (flujo tradicional)</li>
         <li><strong>Venta Directa:</strong> Ventas inmediatas desde inventario en Casa, Tienda Calzaplaza o Tienda CalzaPe</li>
+        <li><strong>Ventas a Crédito:</strong> Al seleccionar estado "A Crédito", se crea automáticamente una cuenta por cobrar vinculada</li>
     </ul>
 </div>
 

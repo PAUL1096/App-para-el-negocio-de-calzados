@@ -67,8 +67,21 @@
                     </div>
 
                     <div class="mb-3">
-                        <label class="form-label">Cliente</label>
-                        <input type="text" class="form-control" id="cliente" name="cliente" required>
+                        <label class="form-label">Cliente <span class="text-danger">*</span></label>
+                        <select class="form-select" id="id_cliente" name="id_cliente" required onchange="seleccionarClienteVentaDirecta()">
+                            <option value="">-- Seleccionar Cliente --</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id_cliente }}"
+                                    data-nombre="{{ cliente.nombre }} {{ cliente.apellido or '' }}">
+                                {{ cliente.nombre }} {{ cliente.apellido or '' }}
+                                {% if cliente.nombre_comercial %}({{ cliente.nombre_comercial }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <input type="hidden" id="cliente_nombre" name="cliente">
+                        <small class="text-muted">
+                            <a href="/clientes" target="_blank">+ Crear nuevo cliente</a>
+                        </small>
                     </div>
 
                     <div class="mb-3">
@@ -147,6 +160,19 @@
 <script>
 let inventarioActual = [];
 let productoSeleccionado = null;
+
+// Función para seleccionar cliente y guardar nombre
+function seleccionarClienteVentaDirecta() {
+    const select = document.getElementById('id_cliente');
+    const option = select.options[select.selectedIndex];
+
+    if (select.value) {
+        const nombreCompleto = option.dataset.nombre;
+        document.getElementById('cliente_nombre').value = nombreCompleto;
+    } else {
+        document.getElementById('cliente_nombre').value = '';
+    }
+}
 
 function cargarInventario() {
     const ubicacionId = document.getElementById('ubicacion').value;
@@ -243,6 +269,12 @@ document.getElementById('formVenta').addEventListener('submit', function(e) {
         return;
     }
 
+    const idCliente = document.getElementById('id_cliente').value;
+    if (!idCliente) {
+        alert('Debe seleccionar un cliente');
+        return;
+    }
+
     const cantidad = parseInt(document.getElementById('cantidad_pares').value);
     if (cantidad > productoSeleccionado.cantidad_pares) {
         alert(`Stock insuficiente. Disponible: ${productoSeleccionado.cantidad_pares} pares`);
@@ -252,7 +284,8 @@ document.getElementById('formVenta').addEventListener('submit', function(e) {
     const formData = {
         id_inventario: parseInt(document.getElementById('id_inventario').value),
         id_producto: parseInt(document.getElementById('id_producto').value),
-        cliente: document.getElementById('cliente').value,
+        id_cliente: parseInt(idCliente),
+        cliente: document.getElementById('cliente_nombre').value,
         cantidad_pares: cantidad,
         pares_por_docena: parseInt(document.getElementById('pares_por_docena').value),
         precio_unitario: parseFloat(document.getElementById('precio_unitario').value),
