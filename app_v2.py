@@ -943,12 +943,17 @@ def cuentas_por_cobrar():
     ''')
     top_deudores = cursor.fetchall()
 
+    # Lista de clientes para el modal de nueva cuenta
+    cursor.execute('SELECT * FROM clientes ORDER BY nombre')
+    clientes = cursor.fetchall()
+
     conn.close()
 
     return render_template('cuentas_por_cobrar.html',
                          stats=stats,
                          cuentas_vencidas=cuentas_vencidas,
-                         top_deudores=top_deudores)
+                         top_deudores=top_deudores,
+                         clientes=clientes)
 
 @app.route('/clientes')
 def clientes():
