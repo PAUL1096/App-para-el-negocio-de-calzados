@@ -949,11 +949,11 @@ def ubicaciones():
 
 @app.route('/cuentas-por-cobrar')
 def cuentas_por_cobrar():
-    """Dashboard de cuentas por cobrar"""
+    """Dashboard de cuentas por cobrar y ventas pendientes"""
     conn = get_db()
     cursor = conn.cursor()
 
-    # Estadísticas generales
+    # Estadísticas generales - Cuentas formales
     cursor.execute('''
         SELECT
             COUNT(*) as total_cuentas,
@@ -965,6 +965,22 @@ def cuentas_por_cobrar():
     ''')
     stats = dict(cursor.fetchone())
 
+    # Estadísticas de ventas pendientes sin cuenta formal
+    cursor.execute('''
+        SELECT
+            COUNT(*) as total_ventas_pendientes,
+            COALESCE(SUM(total_final), 0) as total_pendiente_ventas
+        FROM ventas_v2
+        WHERE estado_pago IN ('pendiente', 'parcial')
+        AND id_venta NOT IN (SELECT id_venta FROM cuentas_por_cobrar WHERE id_venta IS NOT NULL)
+    ''')
+    stats_ventas = dict(cursor.fetchone())
+
+    # Combinar estadísticas
+    stats['total_por_cobrar'] = stats['total_por_cobrar'] + stats_ventas['total_pendiente_ventas']
+    stats['total_ventas_pendientes'] = stats_ventas['total_ventas_pendientes']
+    stats['total_pendiente_ventas'] = stats_ventas['total_pendiente_ventas']
+
     # Cuentas vencidas
     cursor.execute('''
         SELECT
@@ -973,26 +989,52 @@ def cuentas_por_cobrar():
             cl.apellido,
             cl.nombre_comercial
         FROM cuentas_por_cobrar c
-        JOIN clientes cl ON c.id_cliente = cl.id_cliente
+        JOIN clientes cl ON c.id_cliente = c.id_cliente
         WHERE c.estado = 'vencida' AND c.saldo_pendiente > 0
         ORDER BY c.dias_mora DESC, c.saldo_pendiente DESC
         LIMIT 10
     ''')
     cuentas_vencidas = cursor.fetchall()
 
-    # Clientes con mayor deuda
+    # Ventas pendientes sin cuenta por cobrar
+    cursor.execute('''
+        SELECT
+            v.id_venta,
+            v.codigo_venta,
+            v.fecha_venta,
+            v.cliente,
+            v.total_final,
+            v.estado_pago,
+            v.metodo_pago,
+            COALESCE(cl.nombre || ' ' || COALESCE(cl.apellido, ''), v.cliente) as nombre_cliente,
+            JULIANDAY('now') - JULIANDAY(v.fecha_venta) as dias_pendiente
+        FROM ventas_v2 v
+        LEFT JOIN clientes cl ON v.id_cliente = cl.id_cliente
+        WHERE v.estado_pago IN ('pendiente', 'parcial')
+        AND v.id_venta NOT IN (SELECT id_venta FROM cuentas_por_cobrar WHERE id_venta IS NOT NULL)
+        ORDER BY v.fecha_venta ASC
+        LIMIT 20
+    ''')
+    ventas_pendientes = cursor.fetchall()
+
+    # Clientes con mayor deuda (incluye cuentas formales + ventas pendientes)
     cursor.execute('''
         SELECT
             cl.id_cliente,
             cl.nombre,
             cl.apellido,
             cl.nombre_comercial,
-            COALESCE(SUM(c.saldo_pendiente), 0) as deuda_total,
-            COUNT(c.id_cuenta) as num_cuentas
+            (COALESCE(SUM(c.saldo_pendiente), 0) + COALESCE(SUM(v.total_final), 0)) as deuda_total,
+            COUNT(DISTINCT c.id_cuenta) as num_cuentas,
+            COUNT(DISTINCT v.id_venta) as num_ventas_pendientes
         FROM clientes cl
-        LEFT JOIN cuentas_por_cobrar c ON cl.id_cliente = c.id_cliente
-        WHERE c.saldo_pendiente > 0
+        LEFT JOIN cuentas_por_cobrar c ON cl.id_cliente = c.id_cliente AND c.saldo_pendiente > 0
+        LEFT JOIN ventas_v2 v ON cl.id_cliente = v.id_cliente
+            AND v.estado_pago IN ('pendiente', 'parcial')
+            AND v.id_venta NOT IN (SELECT id_venta FROM cuentas_por_cobrar WHERE id_venta IS NOT NULL)
+        WHERE c.saldo_pendiente > 0 OR v.estado_pago IN ('pendiente', 'parcial')
         GROUP BY cl.id_cliente
+        HAVING deuda_total > 0
         ORDER BY deuda_total DESC
         LIMIT 5
     ''')
@@ -1007,6 +1049,7 @@ def cuentas_por_cobrar():
     return render_template('cuentas_por_cobrar.html',
                          stats=stats,
                          cuentas_vencidas=cuentas_vencidas,
+                         ventas_pendientes=ventas_pendientes,
                          top_deudores=top_deudores,
                          clientes=clientes)
 
