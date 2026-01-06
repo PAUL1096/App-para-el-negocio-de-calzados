@@ -100,9 +100,21 @@
 
 ---
 
+### 11. Integración Completa Ventas ↔ Cuentas por Cobrar ✅
+- **Problema:** Falta integración bidireccional completa
+- **Solución:**
+  - Vista detallada de venta con productos + cuenta + pagos
+  - Navegación bidireccional (Ventas ↔ Cuentas)
+  - Registro de pagos desde detalle de venta
+  - Historial de pagos visible
+  - Resumen financiero con progreso visual
+- **Commit:** b375420
+
+---
+
 ## 🎉 DESARROLLO COMPLETADO
 
-✅ **10/10 problemas resueltos**
+✅ **11/11 funcionalidades implementadas**
 
 El sistema de ventas multi-producto está **100% funcional** con:
 
@@ -110,12 +122,13 @@ El sistema de ventas multi-producto está **100% funcional** con:
 2. ✅ API multi-producto funcionando
 3. ✅ UI de carrito de compras completa
 4. ✅ Clientes desconocidos permitidos
-5. ✅ Integración con cuentas por cobrar
+5. ✅ Integración básica con cuentas por cobrar
 6. ✅ Errores de códigos corregidos
 7. ✅ Mensajes de éxito claros
 8. ✅ Preparaciones clarificadas (solo alistar)
 9. ✅ Rutas antiguas deshabilitadas
 10. ✅ Documentación completa
+11. ✅ **Integración completa Ventas ↔ Cuentas por Cobrar**
 
 ---
 
@@ -137,4 +150,19 @@ El sistema de ventas multi-producto está **100% funcional** con:
 ### Para cobrar:
 1. Ir a módulo **Cuentas por Cobrar**
 2. Ver ventas pendientes y cuentas formales
-3. Registrar pagos
+3. Click en ícono "Ojo" para ver detalle de venta
+4. Registrar pagos desde el detalle o desde la lista
+
+### Ver detalle completo de una venta:
+1. Desde **Ventas** o **Cuentas por Cobrar**
+2. Click en botón <i class="bi bi-eye"></i> "Ver"
+3. Se muestra:
+   - Información de la venta
+   - Productos comprados (tabla completa)
+   - Estado de cuenta por cobrar
+   - Historial de pagos
+   - Resumen financiero con progreso
+4. Acciones disponibles:
+   - Registrar pago parcial
+   - Pagar saldo completo
+   - Imprimir comprobante
