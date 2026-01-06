@@ -68,10 +68,12 @@
                         </td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-info" title="Ver">
+                                <a href="/clientes/{{ cliente.id_cliente }}" class="btn btn-outline-info" title="Ver Detalle">
                                     <i class="bi bi-eye"></i>
-                                </button>
-                                <button class="btn btn-outline-secondary" title="Editar">
+                                </a>
+                                <button class="btn btn-outline-secondary" title="Editar"
+                                        onclick="cargarClienteEditar({{ cliente.id_cliente }})"
+                                        data-bs-toggle="modal" data-bs-target="#modalEditarCliente">
                                     <i class="bi bi-pencil"></i>
                                 </button>
                             </div>
@@ -184,6 +186,112 @@
     </div>
 </div>
 
+<!-- Modal: Editar Cliente -->
+<div class="modal fade" id="modalEditarCliente" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header bg-secondary text-white">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Editar Cliente</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarCliente">
+                    <input type="hidden" id="edit_id_cliente">
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Nombre <span class="text-danger">*</span></label>
+                            <input type="text" class="form-control" id="edit_nombre" name="nombre" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Apellido</label>
+                            <input type="text" class="form-control" id="edit_apellido" name="apellido">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nombre Comercial / Empresa</label>
+                        <input type="text" class="form-control" id="edit_nombre_comercial" name="nombre_comercial"
+                               placeholder="Opcional - para clientes empresariales">
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-4 mb-3">
+                            <label class="form-label">Tipo Documento</label>
+                            <select class="form-select" id="edit_tipo_documento" name="tipo_documento">
+                                <option value="DNI">DNI</option>
+                                <option value="RUC">RUC</option>
+                                <option value="CE">Carnet de Extranjería</option>
+                                <option value="PASAPORTE">Pasaporte</option>
+                            </select>
+                        </div>
+                        <div class="col-md-8 mb-3">
+                            <label class="form-label">Número de Documento</label>
+                            <input type="text" class="form-control" id="edit_numero_documento" name="numero_documento">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Teléfono</label>
+                            <input type="tel" class="form-control" id="edit_telefono" name="telefono"
+                                   placeholder="Ej: 987654321">
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Email</label>
+                            <input type="email" class="form-control" id="edit_email" name="email"
+                                   placeholder="ejemplo@correo.com">
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Dirección</label>
+                        <textarea class="form-control" id="edit_direccion" name="direccion" rows="2"
+                                  placeholder="Dirección completa del cliente"></textarea>
+                    </div>
+
+                    <hr>
+                    <h6 class="text-muted mb-3"><i class="bi bi-credit-card"></i> Configuración de Crédito</h6>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Límite de Crédito (S/)</label>
+                            <input type="number" class="form-control" id="edit_limite_credito" name="limite_credito"
+                                   step="0.01" min="0" value="0">
+                            <small class="text-muted">Monto máximo de crédito permitido</small>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Días de Crédito</label>
+                            <input type="number" class="form-control" id="edit_dias_credito" name="dias_credito"
+                                   min="0" value="30">
+                            <small class="text-muted">Plazo para pago (días)</small>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="edit_observaciones" name="observaciones" rows="2"
+                                  placeholder="Notas adicionales sobre el cliente"></textarea>
+                    </div>
+
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="edit_activo" checked>
+                        <label class="form-check-label" for="edit_activo">
+                            Cliente Activo
+                        </label>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarClienteEditado()">
+                    <i class="bi bi-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <script>
 function guardarNuevoCliente() {
     const form = document.getElementById('formNuevoCliente');
@@ -223,6 +331,77 @@ function guardarNuevoCliente() {
     })
     .catch(error => {
         alert('Error al crear cliente: ' + error);
+    });
+}
+
+function cargarClienteEditar(id_cliente) {
+    fetch(`/api/clientes/${id_cliente}`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            const cliente = data.cliente;
+            document.getElementById('edit_id_cliente').value = cliente.id_cliente;
+            document.getElementById('edit_nombre').value = cliente.nombre || '';
+            document.getElementById('edit_apellido').value = cliente.apellido || '';
+            document.getElementById('edit_nombre_comercial').value = cliente.nombre_comercial || '';
+            document.getElementById('edit_tipo_documento').value = cliente.tipo_documento || 'DNI';
+            document.getElementById('edit_numero_documento').value = cliente.numero_documento || '';
+            document.getElementById('edit_telefono').value = cliente.telefono || '';
+            document.getElementById('edit_email').value = cliente.email || '';
+            document.getElementById('edit_direccion').value = cliente.direccion || '';
+            document.getElementById('edit_limite_credito').value = cliente.limite_credito || 0;
+            document.getElementById('edit_dias_credito').value = cliente.dias_credito || 30;
+            document.getElementById('edit_observaciones').value = cliente.observaciones || '';
+            document.getElementById('edit_activo').checked = cliente.activo == 1;
+        } else {
+            alert('Error al cargar cliente: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error al cargar cliente: ' + error);
+    });
+}
+
+function guardarClienteEditado() {
+    const form = document.getElementById('formEditarCliente');
+
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const id_cliente = document.getElementById('edit_id_cliente').value;
+    const data = {
+        nombre: document.getElementById('edit_nombre').value,
+        apellido: document.getElementById('edit_apellido').value,
+        nombre_comercial: document.getElementById('edit_nombre_comercial').value,
+        tipo_documento: document.getElementById('edit_tipo_documento').value,
+        numero_documento: document.getElementById('edit_numero_documento').value,
+        telefono: document.getElementById('edit_telefono').value,
+        email: document.getElementById('edit_email').value,
+        direccion: document.getElementById('edit_direccion').value,
+        limite_credito: parseFloat(document.getElementById('edit_limite_credito').value) || 0,
+        dias_credito: parseInt(document.getElementById('edit_dias_credito').value) || 30,
+        observaciones: document.getElementById('edit_observaciones').value,
+        activo: document.getElementById('edit_activo').checked ? 1 : 0
+    };
+
+    fetch(`/api/clientes/actualizar/${id_cliente}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✓ Cliente actualizado exitosamente');
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error al actualizar cliente: ' + error);
     });
 }
 </script>

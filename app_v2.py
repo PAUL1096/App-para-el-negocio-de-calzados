@@ -880,6 +880,72 @@ def inventario_por_ubicacion(id_ubicacion):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
+@app.route('/api/inventario/productos-preparados')
+def inventario_preparados():
+    """API para obtener productos preparados disponibles para venta"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Obtener productos de todas las preparaciones activas que aún no se han vendido
+        cursor.execute('''
+            SELECT
+                pd.id_preparacion,
+                pd.id_producto,
+                p.codigo_preparacion,
+                p.fecha_preparacion,
+                u.nombre as ubicacion_origen,
+                pp.cuero,
+                pp.color_cuero,
+                pp.suela,
+                pp.forro,
+                pp.serie_tallas,
+                pp.precio_sugerido,
+                pp.pares_por_docena,
+                vb.codigo_interno,
+                vb.tipo_calzado,
+                (pd.cantidad_pares - pd.cantidad_vendida) as cantidad_disponible,
+                (pd.cantidad_pares - pd.cantidad_vendida) / CAST(pp.pares_por_docena AS FLOAT) as docenas_disponibles
+            FROM preparaciones_detalle pd
+            JOIN preparaciones p ON pd.id_preparacion = p.id_preparacion
+            JOIN productos_producidos pp ON pd.id_producto = pp.id_producto
+            JOIN variantes_base vb ON pp.id_variante_base = vb.id_variante_base
+            LEFT JOIN ubicaciones u ON p.id_ubicacion_origen = u.id_ubicacion
+            WHERE (pd.cantidad_pares - pd.cantidad_vendida) > 0
+            AND p.estado IN ('pendiente', 'en_proceso')
+            ORDER BY p.fecha_preparacion DESC, vb.codigo_interno, pp.cuero, pp.color_cuero
+        ''')
+
+        productos = cursor.fetchall()
+        conn.close()
+
+        # Convertir a lista de diccionarios
+        items = []
+        for row in productos:
+            items.append({
+                'id_preparacion': row['id_preparacion'],
+                'id_producto': row['id_producto'],
+                'codigo_preparacion': row['codigo_preparacion'],
+                'fecha_preparacion': row['fecha_preparacion'],
+                'ubicacion_origen': row['ubicacion_origen'] or 'Sin ubicación',
+                'codigo_interno': row['codigo_interno'],
+                'tipo_calzado': row['tipo_calzado'],
+                'cuero': row['cuero'],
+                'color_cuero': row['color_cuero'],
+                'suela': row['suela'],
+                'forro': row['forro'],
+                'serie_tallas': row['serie_tallas'],
+                'cantidad_disponible': row['cantidad_disponible'],
+                'docenas_disponibles': round(row['docenas_disponibles'], 2),
+                'precio_sugerido': row['precio_sugerido'],
+                'pares_por_docena': row['pares_por_docena']
+            })
+
+        return jsonify({'success': True, 'productos': items})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
 @app.route('/api/ventas/registrar-directa', methods=['POST'])
 def registrar_venta_directa():
     """API para registrar venta directa con MÚLTIPLES productos (sin preparación)"""
@@ -1386,6 +1452,98 @@ def crear_cliente():
             return jsonify({'success': False, 'error': f'Ya existe un cliente con el documento ingresado'}), 400
         elif 'email' in error_msg:
             return jsonify({'success': False, 'error': f'Ya existe un cliente con ese email'}), 400
+        else:
+            return jsonify({'success': False, 'error': 'Error: dato duplicado en el sistema'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/clientes/<int:id_cliente>')
+def obtener_cliente(id_cliente):
+    """API para obtener datos de un cliente"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute('SELECT * FROM clientes WHERE id_cliente = ?', (id_cliente,))
+        cliente = cursor.fetchone()
+        conn.close()
+
+        if not cliente:
+            return jsonify({'success': False, 'error': 'Cliente no encontrado'}), 404
+
+        return jsonify({
+            'success': True,
+            'cliente': dict(cliente)
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/clientes/actualizar/<int:id_cliente>', methods=['PUT'])
+def actualizar_cliente(id_cliente):
+    """API para actualizar datos de un cliente"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Convertir cadenas vacías a None para campos únicos
+        numero_documento = data.get('numero_documento', '').strip()
+        numero_documento = numero_documento if numero_documento else None
+
+        email = data.get('email', '').strip()
+        email = email if email else None
+
+        cursor.execute('''
+            UPDATE clientes
+            SET nombre = ?,
+                apellido = ?,
+                nombre_comercial = ?,
+                tipo_documento = ?,
+                numero_documento = ?,
+                telefono = ?,
+                email = ?,
+                direccion = ?,
+                limite_credito = ?,
+                dias_credito = ?,
+                observaciones = ?,
+                activo = ?
+            WHERE id_cliente = ?
+        ''', (
+            data['nombre'],
+            data.get('apellido', ''),
+            data.get('nombre_comercial', ''),
+            data.get('tipo_documento', 'DNI'),
+            numero_documento,
+            data.get('telefono', ''),
+            email,
+            data.get('direccion', ''),
+            data.get('limite_credito', 0),
+            data.get('dias_credito', 30),
+            data.get('observaciones', ''),
+            data.get('activo', 1),
+            id_cliente
+        ))
+
+        if cursor.rowcount == 0:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Cliente no encontrado'}), 404
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Cliente actualizado exitosamente'
+        })
+
+    except sqlite3.IntegrityError as e:
+        error_msg = str(e)
+        if 'numero_documento' in error_msg:
+            return jsonify({'success': False, 'error': f'Ya existe otro cliente con el documento ingresado'}), 400
+        elif 'email' in error_msg:
+            return jsonify({'success': False, 'error': f'Ya existe otro cliente con ese email'}), 400
         else:
             return jsonify({'success': False, 'error': 'Error: dato duplicado en el sistema'}), 400
     except Exception as e:

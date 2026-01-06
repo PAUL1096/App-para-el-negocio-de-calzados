@@ -11,15 +11,19 @@
         <!-- Selección de Ubicación -->
         <div class="card mb-3">
             <div class="card-header">
-                <h5 class="mb-0">1. Seleccionar Ubicación</h5>
+                <h5 class="mb-0">1. Seleccionar Ubicación o Productos Preparados</h5>
             </div>
             <div class="card-body">
                 <select class="form-select form-select-lg" id="ubicacion" onchange="cargarInventario()">
-                    <option value="">-- Seleccionar Ubicación --</option>
+                    <option value="">-- Seleccionar Ubicación o Productos Preparados --</option>
                     {% for ub in ubicaciones %}
                     <option value="{{ ub.id_ubicacion }}">{{ ub.nombre }}</option>
                     {% endfor %}
+                    <option value="PREPARADOS">📦 Productos Preparados (listos para venta)</option>
                 </select>
+                <small class="text-muted d-block mt-2">
+                    <i class="bi bi-info-circle"></i> "Productos Preparados" muestra todo el inventario listo para venta que fue previamente preparado
+                </small>
             </div>
         </div>
 
@@ -196,12 +200,22 @@ function cargarInventario() {
         return;
     }
 
-    fetch(`/api/inventario/por-ubicacion/${ubicacionId}`)
+    // Determinar el endpoint según la selección
+    let url;
+    if (ubicacionId === 'PREPARADOS') {
+        url = '/api/inventario/productos-preparados';
+    } else {
+        url = `/api/inventario/por-ubicacion/${ubicacionId}`;
+    }
+
+    fetch(url)
         .then(response => response.json())
         .then(data => {
             if (data.success) {
-                inventarioActual = data.inventario;
-                mostrarInventario(data.inventario);
+                // Normalizar la respuesta (puede ser 'inventario' o 'productos')
+                const items = data.inventario || data.productos || [];
+                inventarioActual = items;
+                mostrarInventario(items, ubicacionId === 'PREPARADOS');
                 document.getElementById('card-inventario').style.display = 'block';
             } else {
                 alert('Error: ' + data.error);
@@ -212,60 +226,89 @@ function cargarInventario() {
         });
 }
 
-function mostrarInventario(items) {
+function mostrarInventario(items, esPreparado = false) {
     const tabla = document.getElementById('tabla-inventario');
     const totalItems = document.getElementById('total-items');
 
     if (items.length === 0) {
-        tabla.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin stock disponible en esta ubicación</td></tr>';
+        const mensaje = esPreparado
+            ? 'No hay productos preparados disponibles para venta'
+            : 'Sin stock disponible en esta ubicación';
+        tabla.innerHTML = `<tr><td colspan="5" class="text-center text-muted">${mensaje}</td></tr>`;
         totalItems.textContent = '0 productos disponibles';
         return;
     }
 
     totalItems.textContent = `${items.length} producto(s) disponible(s)`;
 
-    tabla.innerHTML = items.map(item => `
-        <tr>
-            <td><strong>${item.codigo_interno}</strong></td>
-            <td>
-                <small>${item.tipo_calzado}</small><br>
-                ${item.cuero} ${item.color_cuero}<br>
-                <small class="text-muted">${item.serie_tallas}</small>
-            </td>
-            <td><strong class="text-success">${item.cantidad_pares}</strong> pares</td>
-            <td>S/ ${item.precio_sugerido.toFixed(2)}</td>
-            <td>
-                <button class="btn btn-sm btn-success" onclick='agregarAlCarrito(${JSON.stringify(item)})'>
-                    <i class="bi bi-cart-plus"></i> Agregar
-                </button>
-            </td>
-        </tr>
-    `).join('');
+    tabla.innerHTML = items.map(item => {
+        const cantidad = item.cantidad_pares || item.cantidad_disponible;
+        const ubicacionInfo = esPreparado
+            ? `<small class="text-info">📦 ${item.codigo_preparacion} | ${item.ubicacion_origen}</small><br>`
+            : '';
+
+        return `
+            <tr>
+                <td><strong>${item.codigo_interno}</strong></td>
+                <td>
+                    ${ubicacionInfo}
+                    <small>${item.tipo_calzado}</small><br>
+                    ${item.cuero} ${item.color_cuero}<br>
+                    <small class="text-muted">${item.serie_tallas}</small>
+                </td>
+                <td><strong class="text-success">${cantidad}</strong> pares</td>
+                <td>S/ ${item.precio_sugerido.toFixed(2)}</td>
+                <td>
+                    <button class="btn btn-sm btn-success" onclick='agregarAlCarrito(${JSON.stringify(item)}, ${esPreparado})'>
+                        <i class="bi bi-cart-plus"></i> Agregar
+                    </button>
+                </td>
+            </tr>
+        `;
+    }).join('');
 }
 
-function agregarAlCarrito(item) {
+function agregarAlCarrito(item, esPreparado = false) {
+    // Crear un ID único dependiendo si es de inventario o preparado
+    const idUnico = esPreparado
+        ? `prep_${item.id_preparacion}_${item.id_producto}`
+        : `inv_${item.id_inventario}`;
+
     // Verificar si el producto ya está en el carrito
-    const existe = carrito.find(p => p.id_inventario === item.id_inventario);
+    const existe = carrito.find(p => p.id_unico === idUnico);
 
     if (existe) {
         alert('Este producto ya está en el carrito. Edita la cantidad desde el carrito.');
         return;
     }
 
+    const cantidad = item.cantidad_pares || item.cantidad_disponible;
+
     // Agregar al carrito con cantidad inicial 1
-    carrito.push({
-        id_inventario: item.id_inventario,
+    const productoCarrito = {
+        id_unico: idUnico,  // ID único para identificar en el carrito
         id_producto: item.id_producto,
         codigo_interno: item.codigo_interno,
         cuero: item.cuero,
         color_cuero: item.color_cuero,
         serie_tallas: item.serie_tallas,
-        stock_disponible: item.cantidad_pares,
+        stock_disponible: cantidad,
         cantidad_pares: 1,
         pares_por_docena: item.pares_por_docena || 12,
         precio_unitario: item.precio_sugerido,
         descuento_linea: 0
-    });
+    };
+
+    // Agregar campos específicos según el origen
+    if (esPreparado) {
+        productoCarrito.id_preparacion = item.id_preparacion;
+        productoCarrito.origen = 'preparado';
+    } else {
+        productoCarrito.id_inventario = item.id_inventario;
+        productoCarrito.origen = 'inventario';
+    }
+
+    carrito.push(productoCarrito);
 
     actualizarVistaCarrito();
     calcularTotalVenta();
