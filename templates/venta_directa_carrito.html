@@ -97,11 +97,25 @@
                     <!-- Estado de Pago -->
                     <div class="mb-3">
                         <label class="form-label">Estado de Pago</label>
-                        <select class="form-select" id="estado_pago" name="estado_pago">
-                            <option value="pagado">Pagado</option>
+                        <select class="form-select" id="estado_pago" name="estado_pago" onchange="manejarEstadoPago()">
+                            <option value="pagado">Pagado (completo)</option>
                             <option value="pendiente">Pendiente</option>
                             <option value="credito">A Crédito</option>
                         </select>
+                    </div>
+
+                    <!-- Pago Inicial (visible solo si NO es pagado completo) -->
+                    <div class="mb-3" id="div-pago-inicial" style="display: none;">
+                        <label class="form-label">Pago Inicial (Abono)</label>
+                        <input type="number" class="form-control" id="pago_inicial" name="pago_inicial"
+                               step="0.01" min="0" value="0" oninput="calcularTotalVenta()">
+                        <small class="text-muted">Si paga algo ahora, ingrésalo aquí. El saldo quedará como deuda.</small>
+                    </div>
+
+                    <!-- Saldo Pendiente (calculado automático) -->
+                    <div class="mb-3" id="div-saldo-pendiente" style="display: none;">
+                        <label class="form-label">Saldo Pendiente</label>
+                        <input type="text" class="form-control bg-light" id="saldo_pendiente" readonly>
                     </div>
 
                     <!-- Método de Pago -->
@@ -329,6 +343,25 @@ function actualizarVistaCarrito() {
     `).join('');
 }
 
+function manejarEstadoPago() {
+    const estadoPago = document.getElementById('estado_pago').value;
+    const divPagoInicial = document.getElementById('div-pago-inicial');
+    const divSaldoPendiente = document.getElementById('div-saldo-pendiente');
+
+    if (estadoPago === 'pagado') {
+        // Si es pagado completo, ocultar campos de pago inicial
+        divPagoInicial.style.display = 'none';
+        divSaldoPendiente.style.display = 'none';
+        document.getElementById('pago_inicial').value = 0;
+    } else {
+        // Si es pendiente o crédito, mostrar campos
+        divPagoInicial.style.display = 'block';
+        divSaldoPendiente.style.display = 'block';
+    }
+
+    calcularTotalVenta();
+}
+
 function calcularTotalVenta() {
     let subtotalVenta = 0;
 
@@ -338,10 +371,17 @@ function calcularTotalVenta() {
 
     const descuentoGlobal = parseFloat(document.getElementById('descuento_global').value) || 0;
     const totalFinal = subtotalVenta - descuentoGlobal;
+    const pagoInicial = parseFloat(document.getElementById('pago_inicial').value) || 0;
+    const saldoPendiente = Math.max(0, totalFinal - pagoInicial);
 
     document.getElementById('subtotal').textContent = 'S/ ' + subtotalVenta.toFixed(2);
     document.getElementById('descuento-texto').textContent = 'S/ ' + descuentoGlobal.toFixed(2);
     document.getElementById('total').textContent = 'S/ ' + totalFinal.toFixed(2);
+
+    // Actualizar saldo pendiente
+    if (document.getElementById('div-saldo-pendiente').style.display !== 'none') {
+        document.getElementById('saldo_pendiente').value = 'S/ ' + saldoPendiente.toFixed(2);
+    }
 }
 
 document.getElementById('formVenta').addEventListener('submit', function(e) {
@@ -353,15 +393,18 @@ document.getElementById('formVenta').addEventListener('submit', function(e) {
     }
 
     const idCliente = document.getElementById('id_cliente').value;
+    const estadoPago = document.getElementById('estado_pago').value;
+    const pagoInicial = parseFloat(document.getElementById('pago_inicial').value) || 0;
 
     const formData = {
         id_cliente: idCliente ? parseInt(idCliente) : null,
         cliente: document.getElementById('cliente_nombre').value,
         productos: carrito,
         descuento_global: parseFloat(document.getElementById('descuento_global').value) || 0,
-        estado_pago: document.getElementById('estado_pago').value,
+        estado_pago: estadoPago,
         metodo_pago: document.getElementById('metodo_pago').value,
-        observaciones: document.getElementById('observaciones').value
+        observaciones: document.getElementById('observaciones').value,
+        pago_inicial: pagoInicial
     };
 
     fetch('/api/ventas/registrar-directa', {

@@ -722,13 +722,17 @@ def registrar_venta():
                     WHERE id_preparacion = ? AND id_producto = ?
                 ''', (prod['cantidad_pares'], data['id_preparacion'], prod['id_producto']))
 
-        # Si es venta a crédito, crear cuenta por cobrar automáticamente
-        # NOTA: Solo se crea cuenta por cobrar si hay un cliente registrado
-        if data.get('estado_pago') == 'credito' and data.get('id_cliente'):
-            # Obtener días de crédito del cliente
-            cursor.execute('SELECT dias_credito FROM clientes WHERE id_cliente = ?', (data['id_cliente'],))
-            cliente_data = cursor.fetchone()
-            dias_credito = cliente_data['dias_credito'] if cliente_data else 30
+        # Si es venta a crédito o pendiente, crear cuenta por cobrar (incluso para clientes desconocidos)
+        pago_inicial = data.get('pago_inicial', 0) or 0
+        saldo_pendiente_cuenta = total_final - pago_inicial
+
+        if data.get('estado_pago') in ['credito', 'pendiente'] and saldo_pendiente_cuenta > 0:
+            # Obtener días de crédito del cliente (si existe)
+            dias_credito = 30  # Por defecto
+            if data.get('id_cliente'):
+                cursor.execute('SELECT dias_credito FROM clientes WHERE id_cliente = ?', (data['id_cliente'],))
+                cliente_data = cursor.fetchone()
+                dias_credito = cliente_data['dias_credito'] if cliente_data else 30
 
             # Generar código de cuenta
             cursor.execute('SELECT MAX(id_cuenta) FROM cuentas_por_cobrar')
@@ -736,24 +740,48 @@ def registrar_venta():
             codigo_cuenta = f"CC-{max_id + 1:06d}"
 
             # Crear cuenta por cobrar
+            observacion = f"Cuenta generada automáticamente desde venta {codigo_venta}"
+            if not data.get('id_cliente'):
+                observacion += " | ⚠️ CLIENTE DESCONOCIDO - Requiere seguimiento"
+
             cursor.execute('''
                 INSERT INTO cuentas_por_cobrar
                 (id_cliente, id_venta, codigo_cuenta, concepto, monto_total, saldo_pendiente,
                  fecha_emision, fecha_vencimiento, observaciones)
                 VALUES (?, ?, ?, ?, ?, ?, DATE('now'), DATE('now', '+' || ? || ' days'), ?)
             ''', (
-                data['id_cliente'],
+                data.get('id_cliente'),  # Puede ser NULL para clientes desconocidos
                 id_venta,
                 codigo_cuenta,
                 f'Venta {codigo_venta}',
                 total_final,
-                total_final,
+                saldo_pendiente_cuenta,  # Saldo después del pago inicial
                 dias_credito,
-                f"Cuenta generada automáticamente desde venta {codigo_venta}"
+                observacion
             ))
-        elif data.get('estado_pago') == 'credito' and not data.get('id_cliente'):
-            # Advertencia: Venta a crédito sin cliente registrado
-            print(f"⚠️  ADVERTENCIA: Venta {codigo_venta} a crédito sin cliente registrado")
+
+            id_cuenta_creada = cursor.lastrowid
+
+            # Si hubo pago inicial, registrarlo como primer pago
+            if pago_inicial > 0:
+                cursor.execute('''
+                    INSERT INTO pagos
+                    (id_cuenta, monto_pago, metodo_pago, fecha_pago, observaciones)
+                    VALUES (?, ?, ?, DATE('now'), ?)
+                ''', (
+                    id_cuenta_creada,
+                    pago_inicial,
+                    data.get('metodo_pago', 'efectivo'),
+                    f'Pago inicial al momento de la venta {codigo_venta}'
+                ))
+
+                # Actualizar estado de la venta a 'parcial' si hubo pago inicial pero queda saldo
+                if saldo_pendiente_cuenta > 0:
+                    cursor.execute('''
+                        UPDATE ventas_v2
+                        SET estado_pago = 'parcial'
+                        WHERE id_venta = ?
+                    ''', (id_venta,))
 
         conn.commit()
         conn.close()
@@ -970,13 +998,17 @@ def registrar_venta_directa():
                 WHERE id_inventario = ?
             ''', (prod['cantidad_pares'], prod['id_inventario']))
 
-        # Si es venta a crédito, crear cuenta por cobrar automáticamente
-        # NOTA: Solo se crea cuenta por cobrar si hay un cliente registrado
-        if data.get('estado_pago') == 'credito' and data.get('id_cliente'):
-            # Obtener días de crédito del cliente
-            cursor.execute('SELECT dias_credito FROM clientes WHERE id_cliente = ?', (data['id_cliente'],))
-            cliente_data = cursor.fetchone()
-            dias_credito = cliente_data['dias_credito'] if cliente_data else 30
+        # Si es venta a crédito o pendiente, crear cuenta por cobrar (incluso para clientes desconocidos)
+        pago_inicial = data.get('pago_inicial', 0) or 0
+        saldo_pendiente_cuenta = total_final - pago_inicial
+
+        if data.get('estado_pago') in ['credito', 'pendiente'] and saldo_pendiente_cuenta > 0:
+            # Obtener días de crédito del cliente (si existe)
+            dias_credito = 30  # Por defecto
+            if data.get('id_cliente'):
+                cursor.execute('SELECT dias_credito FROM clientes WHERE id_cliente = ?', (data['id_cliente'],))
+                cliente_data = cursor.fetchone()
+                dias_credito = cliente_data['dias_credito'] if cliente_data else 30
 
             # Generar código de cuenta
             cursor.execute('SELECT MAX(id_cuenta) FROM cuentas_por_cobrar')
@@ -984,33 +1016,64 @@ def registrar_venta_directa():
             codigo_cuenta = f"CC-{max_id + 1:06d}"
 
             # Crear cuenta por cobrar
+            observacion = f"Cuenta generada automáticamente desde venta {codigo_venta}"
+            if not data.get('id_cliente'):
+                observacion += " | ⚠️ CLIENTE DESCONOCIDO - Requiere seguimiento"
+
             cursor.execute('''
                 INSERT INTO cuentas_por_cobrar
                 (id_cliente, id_venta, codigo_cuenta, concepto, monto_total, saldo_pendiente,
                  fecha_emision, fecha_vencimiento, observaciones)
+                VALUES (?, ?, ?, ?, ?, ?, DATE('now'), DATE('now', '+' || ? || ' days'), ?)
             ''', (
-                data['id_cliente'],
+                data.get('id_cliente'),  # Puede ser NULL para clientes desconocidos
                 id_venta,
                 codigo_cuenta,
                 f'Venta {codigo_venta}',
                 total_final,
-                total_final,
+                saldo_pendiente_cuenta,
                 dias_credito,
-                f"Cuenta generada automáticamente desde venta {codigo_venta}"
+                observacion
             ))
-        elif data.get('estado_pago') == 'credito' and not data.get('id_cliente'):
-            # Advertencia: Venta a crédito sin cliente registrado
-            print(f"⚠️  ADVERTENCIA: Venta {codigo_venta} a crédito sin cliente registrado")
+
+            id_cuenta_creada = cursor.lastrowid
+
+            # Si hubo pago inicial, registrarlo como primer pago
+            if pago_inicial > 0:
+                cursor.execute('''
+                    INSERT INTO pagos
+                    (id_cuenta, monto_pago, metodo_pago, fecha_pago, observaciones)
+                    VALUES (?, ?, ?, DATE('now'), ?)
+                ''', (
+                    id_cuenta_creada,
+                    pago_inicial,
+                    data.get('metodo_pago', 'efectivo'),
+                    f'Pago inicial al momento de la venta {codigo_venta}'
+                ))
+
+                # Actualizar estado de la venta a 'parcial' si hubo pago inicial pero queda saldo
+                if saldo_pendiente_cuenta > 0:
+                    cursor.execute('''
+                        UPDATE ventas_v2
+                        SET estado_pago = 'parcial'
+                        WHERE id_venta = ?
+                    ''', (id_venta,))
 
         conn.commit()
         conn.close()
 
+        mensaje = f'Venta directa registrada exitosamente con {len(productos)} producto(s)'
+        if pago_inicial > 0:
+            mensaje += f' | Pago inicial: S/ {pago_inicial:.2f} | Saldo: S/ {saldo_pendiente_cuenta:.2f}'
+
         return jsonify({
             'success': True,
-            'message': f'Venta directa registrada exitosamente con {len(productos)} producto(s)',
+            'message': mensaje,
             'codigo_venta': codigo_venta,
             'total_productos': len(productos),
-            'total_final': total_final
+            'total_final': total_final,
+            'pago_inicial': pago_inicial,
+            'saldo_pendiente': saldo_pendiente_cuenta
         })
 
     except Exception as e:
