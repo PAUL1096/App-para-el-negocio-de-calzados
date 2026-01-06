@@ -977,21 +977,43 @@ def registrar_venta_directa():
         nuevo_numero = ultimo_numero + 1
         codigo_venta = f"VD{fecha_hoy}-{nuevo_numero:03d}"  # VD = Venta Directa
 
-        # Calcular total de la venta
+        # Calcular total de la venta y validar stock
         total_venta = 0
         for prod in productos:
-            # Verificar stock disponible para cada producto
-            cursor.execute('''
-                SELECT cantidad_pares FROM inventario
-                WHERE id_inventario = ? AND tipo_stock = 'general'
-            ''', (prod['id_inventario'],))
+            # Determinar el origen del producto (inventario o preparación)
+            origen = prod.get('origen', 'inventario')
 
-            inventario = cursor.fetchone()
-            if not inventario:
-                raise Exception(f'Inventario no encontrado para producto {prod.get("codigo_interno", "")}')
+            if origen == 'preparado':
+                # Producto viene de preparaciones
+                cursor.execute('''
+                    SELECT (cantidad_pares - cantidad_vendida) as disponible
+                    FROM preparaciones_detalle
+                    WHERE id_preparacion = ? AND id_producto = ?
+                ''', (prod['id_preparacion'], prod['id_producto']))
 
-            if inventario['cantidad_pares'] < prod['cantidad_pares']:
-                raise Exception(f'Stock insuficiente para {prod.get("codigo_interno", "")}. Disponible: {inventario["cantidad_pares"]} pares')
+                preparado = cursor.fetchone()
+                if not preparado:
+                    raise Exception(f'Producto preparado no encontrado: {prod.get("codigo_interno", "")}')
+
+                if preparado['disponible'] < prod['cantidad_pares']:
+                    raise Exception(f'Stock insuficiente en preparación para {prod.get("codigo_interno", "")}. Disponible: {preparado["disponible"]} pares')
+
+            else:
+                # Producto viene de inventario
+                if 'id_inventario' not in prod:
+                    raise Exception(f'Producto sin id_inventario ni id_preparacion: {prod.get("codigo_interno", "")}')
+
+                cursor.execute('''
+                    SELECT cantidad_pares FROM inventario
+                    WHERE id_inventario = ? AND tipo_stock = 'general'
+                ''', (prod['id_inventario'],))
+
+                inventario = cursor.fetchone()
+                if not inventario:
+                    raise Exception(f'Inventario no encontrado para producto {prod.get("codigo_interno", "")}')
+
+                if inventario['cantidad_pares'] < prod['cantidad_pares']:
+                    raise Exception(f'Stock insuficiente en inventario para {prod.get("codigo_interno", "")}. Disponible: {inventario["cantidad_pares"]} pares')
 
             subtotal_linea = prod['cantidad_pares'] * prod['precio_unitario']
             subtotal_linea -= prod.get('descuento_linea', 0)
@@ -1000,6 +1022,20 @@ def registrar_venta_directa():
         # Aplicar descuento global
         descuento_global = data.get('descuento_global', 0)
         total_final = total_venta - descuento_global
+
+        # Determinar observaciones según origen de productos
+        productos_inventario = sum(1 for p in productos if p.get('origen', 'inventario') == 'inventario')
+        productos_preparados = sum(1 for p in productos if p.get('origen', 'inventario') == 'preparado')
+
+        if productos_preparados > 0 and productos_inventario > 0:
+            observaciones = f'Venta directa mixta: {productos_inventario} de inventario, {productos_preparados} de preparaciones'
+        elif productos_preparados > 0:
+            observaciones = f'Venta directa desde productos preparados ({productos_preparados} producto(s))'
+        else:
+            observaciones = 'Venta directa desde inventario'
+
+        if data.get('observaciones'):
+            observaciones += f' | {data.get("observaciones")}'
 
         # Crear venta MAESTRO (sin id_preparacion)
         cursor.execute('''
@@ -1015,7 +1051,7 @@ def registrar_venta_directa():
             total_final,
             data.get('estado_pago', 'pagado'),
             data.get('metodo_pago', 'efectivo'),
-            data.get('observaciones', 'Venta directa desde inventario')
+            observaciones
         ))
 
         id_venta = cursor.lastrowid
@@ -1057,12 +1093,23 @@ def registrar_venta_directa():
                 subtotal_linea
             ))
 
-            # Descontar del inventario
-            cursor.execute('''
-                UPDATE inventario
-                SET cantidad_pares = cantidad_pares - ?
-                WHERE id_inventario = ?
-            ''', (prod['cantidad_pares'], prod['id_inventario']))
+            # Descontar del origen correspondiente
+            origen = prod.get('origen', 'inventario')
+
+            if origen == 'preparado':
+                # Descontar de preparaciones_detalle
+                cursor.execute('''
+                    UPDATE preparaciones_detalle
+                    SET cantidad_vendida = cantidad_vendida + ?
+                    WHERE id_preparacion = ? AND id_producto = ?
+                ''', (prod['cantidad_pares'], prod['id_preparacion'], prod['id_producto']))
+            else:
+                # Descontar del inventario
+                cursor.execute('''
+                    UPDATE inventario
+                    SET cantidad_pares = cantidad_pares - ?
+                    WHERE id_inventario = ?
+                ''', (prod['cantidad_pares'], prod['id_inventario']))
 
         # Si es venta a crédito, crear cuenta por cobrar (incluso para clientes desconocidos)
         pago_inicial = data.get('pago_inicial', 0) or 0
