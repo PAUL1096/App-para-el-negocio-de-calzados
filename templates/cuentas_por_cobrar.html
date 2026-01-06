@@ -88,9 +88,16 @@
                         </td>
                         <td><small>{{ cuenta.fecha_vencimiento }}</small></td>
                         <td>
-                            <button class="btn btn-sm btn-success" onclick="registrarPago({{ cuenta.id_cuenta }})">
-                                <i class="bi bi-cash"></i> Pagar
-                            </button>
+                            <div class="btn-group" role="group">
+                                {% if cuenta.id_venta %}
+                                <a href="/ventas/detalle/{{ cuenta.id_venta }}" class="btn btn-sm btn-info">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% endif %}
+                                <button class="btn btn-sm btn-success" onclick="registrarPago({{ cuenta.id_cuenta }})">
+                                    <i class="bi bi-cash"></i> Pagar
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     {% else %}
@@ -147,9 +154,14 @@
                         </td>
                         <td><small>{{ venta.metodo_pago or 'N/A' }}</small></td>
                         <td>
-                            <button class="btn btn-sm btn-primary" onclick="convertirACuenta({{ venta.id_venta }}, '{{ venta.codigo_venta }}', {{ venta.total_final }})">
-                                <i class="bi bi-file-earmark-plus"></i> Crear Cuenta
-                            </button>
+                            <div class="btn-group" role="group">
+                                <a href="/ventas/detalle/{{ venta.id_venta }}" class="btn btn-sm btn-info">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <button class="btn btn-sm btn-primary" onclick="convertirACuenta({{ venta.id_venta }}, '{{ venta.codigo_venta }}', {{ venta.total_final }})">
+                                    <i class="bi bi-file-earmark-plus"></i> Crear Cuenta
+                                </button>
+                            </div>
                         </td>
                     </tr>
                     {% else %}

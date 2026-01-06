@@ -558,6 +558,53 @@ def ventas():
 
     return render_template('ventas_v2.html', ventas=ventas, preparaciones_disponibles=preparaciones_disponibles)
 
+@app.route('/ventas/detalle/<int:id_venta>')
+def venta_detalle(id_venta):
+    """Vista detallada de una venta con integración a cuentas por cobrar"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Obtener venta
+    cursor.execute('SELECT * FROM ventas_v2 WHERE id_venta = ?', (id_venta,))
+    venta = cursor.fetchone()
+
+    if not venta:
+        flash('Venta no encontrada', 'danger')
+        return redirect(url_for('ventas'))
+
+    # Obtener detalle de productos
+    cursor.execute('''
+        SELECT * FROM ventas_detalle
+        WHERE id_venta = ?
+        ORDER BY id_detalle
+    ''', (id_venta,))
+    detalles = cursor.fetchall()
+
+    # Obtener cuenta por cobrar asociada (si existe)
+    cursor.execute('''
+        SELECT * FROM cuentas_por_cobrar
+        WHERE id_venta = ?
+    ''', (id_venta,))
+    cuenta = cursor.fetchone()
+
+    # Obtener historial de pagos (si hay cuenta)
+    pagos = []
+    if cuenta:
+        cursor.execute('''
+            SELECT * FROM pagos
+            WHERE id_cuenta = ?
+            ORDER BY fecha_pago DESC
+        ''', (cuenta['id_cuenta'],))
+        pagos = cursor.fetchall()
+
+    conn.close()
+
+    return render_template('venta_detalle.html',
+                         venta=venta,
+                         detalles=detalles,
+                         cuenta=cuenta,
+                         pagos=pagos)
+
 @app.route('/ventas/nueva/<int:id_preparacion>')
 def venta_nueva(id_preparacion):
     """RUTA DESHABILITADA - Redirige al nuevo sistema de ventas multi-producto
