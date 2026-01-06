@@ -465,11 +465,12 @@ def crear_preparacion():
         # Crear preparación
         cursor.execute('''
             INSERT INTO preparaciones
-            (codigo_preparacion, id_ubicacion_origen, dia_venta, fecha_preparacion, observaciones, estado)
-            VALUES (?, ?, ?, ?, ?, 'pendiente')
+            (codigo_preparacion, id_ubicacion_origen, id_ubicacion_destino, dia_venta, fecha_preparacion, observaciones, estado)
+            VALUES (?, ?, ?, ?, ?, ?, 'pendiente')
         ''', (
             codigo_preparacion,
             data['id_ubicacion_origen'],
+            data.get('id_ubicacion_destino'),  # Nuevo campo
             data['dia_venta'],
             data.get('fecha_preparacion', datetime.now().strftime('%Y-%m-%d')),
             data.get('observaciones', '')
@@ -509,6 +510,163 @@ def crear_preparacion():
 
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/preparaciones/confirmar-llegada/<int:id_preparacion>', methods=['POST'])
+def confirmar_llegada_preparacion(id_preparacion):
+    """
+    Confirmar que la mercadería preparada llegó al destino.
+    Mueve el inventario desde ubicación origen hacia ubicación destino.
+    """
+    conn = None
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Iniciar transacción
+        cursor.execute('BEGIN IMMEDIATE')
+
+        # Obtener preparación
+        cursor.execute('''
+            SELECT * FROM preparaciones
+            WHERE id_preparacion = ?
+        ''', (id_preparacion,))
+
+        preparacion = cursor.fetchone()
+
+        if not preparacion:
+            return jsonify({'success': False, 'error': 'Preparación no encontrada'}), 404
+
+        # Validar que tiene destino asignado
+        if not preparacion['id_ubicacion_destino']:
+            return jsonify({
+                'success': False,
+                'error': 'No se puede confirmar llegada: la preparación no tiene ubicación de destino asignada'
+            }), 400
+
+        # Validar que no está ya completada
+        if preparacion['estado'] == 'completada':
+            return jsonify({
+                'success': False,
+                'error': 'Esta preparación ya fue confirmada anteriormente'
+            }), 400
+
+        # Obtener todos los productos de la preparación
+        cursor.execute('''
+            SELECT
+                pd.*,
+                pp.id_variante_base,
+                vb.codigo_interno
+            FROM preparaciones_detalle pd
+            JOIN productos_producidos pp ON pd.id_producto = pp.id_producto
+            JOIN variantes_base vb ON pp.id_variante_base = vb.id_variante_base
+            WHERE pd.id_preparacion = ?
+        ''', (id_preparacion,))
+
+        productos = cursor.fetchall()
+
+        if not productos:
+            return jsonify({'success': False, 'error': 'La preparación no tiene productos'}), 400
+
+        productos_movidos = 0
+        errores = []
+
+        # Mover cada producto del origen al destino
+        for producto in productos:
+            cantidad_a_mover = producto['cantidad_pares']
+
+            try:
+                # 1. Descontar del inventario origen
+                cursor.execute('''
+                    UPDATE inventario
+                    SET cantidad_pares = cantidad_pares - ?
+                    WHERE id_ubicacion = ?
+                      AND id_producto = ?
+                      AND tipo_stock = 'general'
+                ''', (
+                    cantidad_a_mover,
+                    preparacion['id_ubicacion_origen'],
+                    producto['id_producto']
+                ))
+
+                if cursor.rowcount == 0:
+                    # No había registro en el origen, crear uno negativo o error
+                    errores.append(f"Producto {producto['codigo_interno']}: no se encontró en inventario origen")
+                    continue
+
+                # 2. Agregar al inventario destino (o crear si no existe)
+                # Primero verificar si existe
+                cursor.execute('''
+                    SELECT id_inventario, cantidad_pares
+                    FROM inventario
+                    WHERE id_ubicacion = ?
+                      AND id_producto = ?
+                      AND tipo_stock = 'general'
+                ''', (
+                    preparacion['id_ubicacion_destino'],
+                    producto['id_producto']
+                ))
+
+                inventario_destino = cursor.fetchone()
+
+                if inventario_destino:
+                    # Ya existe, incrementar
+                    cursor.execute('''
+                        UPDATE inventario
+                        SET cantidad_pares = cantidad_pares + ?
+                        WHERE id_inventario = ?
+                    ''', (cantidad_a_mover, inventario_destino['id_inventario']))
+                else:
+                    # No existe, crear nuevo registro
+                    cursor.execute('''
+                        INSERT INTO inventario
+                        (id_ubicacion, id_producto, cantidad_pares, tipo_stock)
+                        VALUES (?, ?, ?, 'general')
+                    ''', (
+                        preparacion['id_ubicacion_destino'],
+                        producto['id_producto'],
+                        cantidad_a_mover
+                    ))
+
+                productos_movidos += 1
+
+            except Exception as e:
+                errores.append(f"Producto {producto['codigo_interno']}: {str(e)}")
+
+        # Si hubo errores, revertir todo
+        if errores:
+            conn.rollback()
+            return jsonify({
+                'success': False,
+                'error': 'Errores al mover inventario',
+                'detalles': errores
+            }), 400
+
+        # Marcar preparación como completada
+        cursor.execute('''
+            UPDATE preparaciones
+            SET estado = 'completada',
+                fecha_completada = CURRENT_TIMESTAMP
+            WHERE id_preparacion = ?
+        ''', (id_preparacion,))
+
+        conn.commit()
+
+        return jsonify({
+            'success': True,
+            'message': f'Llegada confirmada exitosamente. {productos_movidos} producto(s) movidos al inventario de destino.',
+            'productos_movidos': productos_movidos,
+            'origen': preparacion['id_ubicacion_origen'],
+            'destino': preparacion['id_ubicacion_destino']
+        })
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+    finally:
+        if conn:
+            conn.close()
 
 # ============================================================================
 # MÓDULO: VENTAS
