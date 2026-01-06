@@ -18,7 +18,7 @@ def migrar():
     print("MIGRACIÓN: Preparaciones como Logística")
     print("=" * 70)
 
-    conn = sqlite3.connect('inventario_calzado.db')
+    conn = sqlite3.connect('calzado.db')
     conn.row_factory = sqlite3.Row
     cursor = conn.cursor()
 
