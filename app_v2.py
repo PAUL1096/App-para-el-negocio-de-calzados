@@ -722,11 +722,11 @@ def registrar_venta():
                     WHERE id_preparacion = ? AND id_producto = ?
                 ''', (prod['cantidad_pares'], data['id_preparacion'], prod['id_producto']))
 
-        # Si es venta a crédito o pendiente, crear cuenta por cobrar (incluso para clientes desconocidos)
+        # Si es venta a crédito, crear cuenta por cobrar (incluso para clientes desconocidos)
         pago_inicial = data.get('pago_inicial', 0) or 0
         saldo_pendiente_cuenta = total_final - pago_inicial
 
-        if data.get('estado_pago') in ['credito', 'pendiente'] and saldo_pendiente_cuenta > 0:
+        if data.get('estado_pago') == 'credito' and saldo_pendiente_cuenta > 0:
             # Obtener días de crédito del cliente (si existe)
             dias_credito = 30  # Por defecto
             if data.get('id_cliente'):
@@ -998,11 +998,11 @@ def registrar_venta_directa():
                 WHERE id_inventario = ?
             ''', (prod['cantidad_pares'], prod['id_inventario']))
 
-        # Si es venta a crédito o pendiente, crear cuenta por cobrar (incluso para clientes desconocidos)
+        # Si es venta a crédito, crear cuenta por cobrar (incluso para clientes desconocidos)
         pago_inicial = data.get('pago_inicial', 0) or 0
         saldo_pendiente_cuenta = total_final - pago_inicial
 
-        if data.get('estado_pago') in ['credito', 'pendiente'] and saldo_pendiente_cuenta > 0:
+        if data.get('estado_pago') == 'credito' and saldo_pendiente_cuenta > 0:
             # Obtener días de crédito del cliente (si existe)
             dias_credito = 30  # Por defecto
             if data.get('id_cliente'):
@@ -1244,6 +1244,96 @@ def clientes():
     conn.close()
 
     return render_template('clientes.html', clientes=clientes_list)
+
+@app.route('/clientes/<int:id_cliente>')
+def cliente_detalle(id_cliente):
+    """Detalle de un cliente con sus cuentas por cobrar"""
+    conn = get_db()
+    cursor = conn.cursor()
+
+    # Información del cliente
+    cursor.execute('SELECT * FROM clientes WHERE id_cliente = ?', (id_cliente,))
+    cliente = cursor.fetchone()
+
+    if not cliente:
+        conn.close()
+        return "Cliente no encontrado", 404
+
+    # Cuentas por cobrar del cliente
+    cursor.execute('''
+        SELECT
+            c.*,
+            v.codigo_venta,
+            JULIANDAY('now') - JULIANDAY(c.fecha_vencimiento) as dias_mora,
+            CASE
+                WHEN c.saldo_pendiente = 0 THEN 'pagada'
+                WHEN JULIANDAY('now') > JULIANDAY(c.fecha_vencimiento) THEN 'vencida'
+                ELSE 'vigente'
+            END as estado
+        FROM cuentas_por_cobrar c
+        LEFT JOIN ventas_v2 v ON c.id_venta = v.id_venta
+        WHERE c.id_cliente = ?
+        ORDER BY c.fecha_emision DESC
+    ''', (id_cliente,))
+    cuentas = cursor.fetchall()
+
+    # Historial de pagos de todas las cuentas del cliente
+    cursor.execute('''
+        SELECT
+            p.*,
+            c.codigo_cuenta,
+            c.concepto
+        FROM pagos p
+        JOIN cuentas_por_cobrar c ON p.id_cuenta = c.id_cuenta
+        WHERE c.id_cliente = ?
+        ORDER BY p.fecha_pago DESC
+        LIMIT 50
+    ''', (id_cliente,))
+    historial_pagos = cursor.fetchall()
+
+    # Ventas del cliente
+    cursor.execute('''
+        SELECT
+            v.*,
+            COUNT(vd.id_detalle) as num_productos
+        FROM ventas_v2 v
+        LEFT JOIN ventas_detalle vd ON v.id_venta = vd.id_venta
+        WHERE v.id_cliente = ?
+        GROUP BY v.id_venta
+        ORDER BY v.fecha_venta DESC
+        LIMIT 20
+    ''', (id_cliente,))
+    ventas = cursor.fetchall()
+
+    # Estadísticas
+    cursor.execute('''
+        SELECT
+            COUNT(*) as total_cuentas,
+            COALESCE(SUM(saldo_pendiente), 0) as deuda_total,
+            COALESCE(SUM(monto_total), 0) as monto_total_creditos,
+            COALESCE(SUM(CASE WHEN estado = 'vencida' THEN saldo_pendiente ELSE 0 END), 0) as deuda_vencida
+        FROM (
+            SELECT
+                c.*,
+                CASE
+                    WHEN c.saldo_pendiente = 0 THEN 'pagada'
+                    WHEN JULIANDAY('now') > JULIANDAY(c.fecha_vencimiento) THEN 'vencida'
+                    ELSE 'vigente'
+                END as estado
+            FROM cuentas_por_cobrar c
+            WHERE c.id_cliente = ?
+        )
+    ''', (id_cliente,))
+    stats = dict(cursor.fetchone())
+
+    conn.close()
+
+    return render_template('cliente_detalle.html',
+                         cliente=cliente,
+                         cuentas=cuentas,
+                         historial_pagos=historial_pagos,
+                         ventas=ventas,
+                         stats=stats)
 
 @app.route('/api/clientes/crear', methods=['POST'])
 def crear_cliente():

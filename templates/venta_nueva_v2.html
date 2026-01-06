@@ -95,11 +95,13 @@
                         <div class="col-md-6">
                             <label for="estado_pago" class="form-label">Estado de Pago</label>
                             <select class="form-select" id="estado_pago" name="estado_pago">
-                                <option value="pendiente">Pendiente</option>
-                                <option value="pagado">Pagado</option>
+                                <option value="pagado">Pagado (completo)</option>
                                 <option value="credito">A Crédito</option>
-                                <option value="parcial">Parcial</option>
                             </select>
+                            <small class="text-muted">
+                                • Pagado: Cliente paga el total ahora<br>
+                                • A Crédito: Se genera cuenta por cobrar (puede abonar parcial)
+                            </small>
                         </div>
                     </div>
 

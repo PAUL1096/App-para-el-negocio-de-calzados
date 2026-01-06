@@ -99,9 +99,12 @@
                         <label class="form-label">Estado de Pago</label>
                         <select class="form-select" id="estado_pago" name="estado_pago" onchange="manejarEstadoPago()">
                             <option value="pagado">Pagado (completo)</option>
-                            <option value="pendiente">Pendiente</option>
                             <option value="credito">A Crédito</option>
                         </select>
+                        <small class="text-muted">
+                            • Pagado: Cliente paga el total ahora<br>
+                            • A Crédito: Cliente puede abonar parcial o nada (se genera cuenta por cobrar)
+                        </small>
                     </div>
 
                     <!-- Pago Inicial (visible solo si NO es pagado completo) -->
