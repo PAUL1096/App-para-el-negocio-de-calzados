@@ -382,13 +382,13 @@ def preparaciones():
     cursor.execute('''
         SELECT
             p.*,
-            u.nombre as ubicacion_origen,
+            u_origen.nombre as ubicacion_origen,
+            u_destino.nombre as ubicacion_destino,
             COUNT(DISTINCT pd.id_producto) as total_productos,
-            SUM(pd.cantidad_pares) as total_pares,
-            SUM(pd.cantidad_vendida) as total_vendido,
-            SUM(pd.cantidad_pares - pd.cantidad_vendida - pd.cantidad_devuelta) as pendiente_vender
+            SUM(pd.cantidad_pares) as total_pares
         FROM preparaciones p
-        LEFT JOIN ubicaciones u ON p.id_ubicacion_origen = u.id_ubicacion
+        LEFT JOIN ubicaciones u_origen ON p.id_ubicacion_origen = u_origen.id_ubicacion
+        LEFT JOIN ubicaciones u_destino ON p.id_ubicacion_destino = u_destino.id_ubicacion
         LEFT JOIN preparaciones_detalle pd ON p.id_preparacion = pd.id_preparacion
         GROUP BY p.id_preparacion
         ORDER BY p.fecha_preparacion DESC, p.id_preparacion DESC
@@ -1038,72 +1038,6 @@ def inventario_por_ubicacion(id_ubicacion):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
-@app.route('/api/inventario/productos-preparados')
-def inventario_preparados():
-    """API para obtener productos preparados disponibles para venta"""
-    try:
-        conn = get_db()
-        cursor = conn.cursor()
-
-        # Obtener productos de todas las preparaciones activas que aún no se han vendido
-        cursor.execute('''
-            SELECT
-                pd.id_preparacion,
-                pd.id_producto,
-                p.codigo_preparacion,
-                p.fecha_preparacion,
-                u.nombre as ubicacion_origen,
-                pp.cuero,
-                pp.color_cuero,
-                pp.suela,
-                pp.forro,
-                pp.serie_tallas,
-                pp.precio_sugerido,
-                pp.pares_por_docena,
-                vb.codigo_interno,
-                vb.tipo_calzado,
-                (pd.cantidad_pares - pd.cantidad_vendida) as cantidad_disponible,
-                (pd.cantidad_pares - pd.cantidad_vendida) / CAST(pp.pares_por_docena AS FLOAT) as docenas_disponibles
-            FROM preparaciones_detalle pd
-            JOIN preparaciones p ON pd.id_preparacion = p.id_preparacion
-            JOIN productos_producidos pp ON pd.id_producto = pp.id_producto
-            JOIN variantes_base vb ON pp.id_variante_base = vb.id_variante_base
-            LEFT JOIN ubicaciones u ON p.id_ubicacion_origen = u.id_ubicacion
-            WHERE (pd.cantidad_pares - pd.cantidad_vendida) > 0
-            AND p.estado IN ('pendiente', 'en_proceso')
-            ORDER BY p.fecha_preparacion DESC, vb.codigo_interno, pp.cuero, pp.color_cuero
-        ''')
-
-        productos = cursor.fetchall()
-        conn.close()
-
-        # Convertir a lista de diccionarios
-        items = []
-        for row in productos:
-            items.append({
-                'id_preparacion': row['id_preparacion'],
-                'id_producto': row['id_producto'],
-                'codigo_preparacion': row['codigo_preparacion'],
-                'fecha_preparacion': row['fecha_preparacion'],
-                'ubicacion_origen': row['ubicacion_origen'] or 'Sin ubicación',
-                'codigo_interno': row['codigo_interno'],
-                'tipo_calzado': row['tipo_calzado'],
-                'cuero': row['cuero'],
-                'color_cuero': row['color_cuero'],
-                'suela': row['suela'],
-                'forro': row['forro'],
-                'serie_tallas': row['serie_tallas'],
-                'cantidad_disponible': row['cantidad_disponible'],
-                'docenas_disponibles': round(row['docenas_disponibles'], 2),
-                'precio_sugerido': row['precio_sugerido'],
-                'pares_por_docena': row['pares_por_docena']
-            })
-
-        return jsonify({'success': True, 'productos': items})
-
-    except Exception as e:
-        return jsonify({'success': False, 'error': str(e)}), 400
-
 @app.route('/api/ventas/registrar-directa', methods=['POST'])
 def registrar_venta_directa():
     """API para registrar venta directa con MÚLTIPLES productos (sin preparación)"""
@@ -1138,40 +1072,22 @@ def registrar_venta_directa():
         # Calcular total de la venta y validar stock
         total_venta = 0
         for prod in productos:
-            # Determinar el origen del producto (inventario o preparación)
-            origen = prod.get('origen', 'inventario')
+            # Validar que tenga id_inventario
+            if 'id_inventario' not in prod:
+                raise Exception(f'Producto sin id_inventario: {prod.get("codigo_interno", "")}')
 
-            if origen == 'preparado':
-                # Producto viene de preparaciones
-                cursor.execute('''
-                    SELECT (cantidad_pares - cantidad_vendida) as disponible
-                    FROM preparaciones_detalle
-                    WHERE id_preparacion = ? AND id_producto = ?
-                ''', (prod['id_preparacion'], prod['id_producto']))
+            # Validar stock disponible en inventario
+            cursor.execute('''
+                SELECT cantidad_pares FROM inventario
+                WHERE id_inventario = ? AND tipo_stock = 'general'
+            ''', (prod['id_inventario'],))
 
-                preparado = cursor.fetchone()
-                if not preparado:
-                    raise Exception(f'Producto preparado no encontrado: {prod.get("codigo_interno", "")}')
+            inventario = cursor.fetchone()
+            if not inventario:
+                raise Exception(f'Inventario no encontrado para producto {prod.get("codigo_interno", "")}')
 
-                if preparado['disponible'] < prod['cantidad_pares']:
-                    raise Exception(f'Stock insuficiente en preparación para {prod.get("codigo_interno", "")}. Disponible: {preparado["disponible"]} pares')
-
-            else:
-                # Producto viene de inventario
-                if 'id_inventario' not in prod:
-                    raise Exception(f'Producto sin id_inventario ni id_preparacion: {prod.get("codigo_interno", "")}')
-
-                cursor.execute('''
-                    SELECT cantidad_pares FROM inventario
-                    WHERE id_inventario = ? AND tipo_stock = 'general'
-                ''', (prod['id_inventario'],))
-
-                inventario = cursor.fetchone()
-                if not inventario:
-                    raise Exception(f'Inventario no encontrado para producto {prod.get("codigo_interno", "")}')
-
-                if inventario['cantidad_pares'] < prod['cantidad_pares']:
-                    raise Exception(f'Stock insuficiente en inventario para {prod.get("codigo_interno", "")}. Disponible: {inventario["cantidad_pares"]} pares')
+            if inventario['cantidad_pares'] < prod['cantidad_pares']:
+                raise Exception(f'Stock insuficiente para {prod.get("codigo_interno", "")}. Disponible: {inventario["cantidad_pares"]} pares')
 
             subtotal_linea = prod['cantidad_pares'] * prod['precio_unitario']
             subtotal_linea -= prod.get('descuento_linea', 0)
@@ -1181,17 +1097,8 @@ def registrar_venta_directa():
         descuento_global = data.get('descuento_global', 0)
         total_final = total_venta - descuento_global
 
-        # Determinar observaciones según origen de productos
-        productos_inventario = sum(1 for p in productos if p.get('origen', 'inventario') == 'inventario')
-        productos_preparados = sum(1 for p in productos if p.get('origen', 'inventario') == 'preparado')
-
-        if productos_preparados > 0 and productos_inventario > 0:
-            observaciones = f'Venta directa mixta: {productos_inventario} de inventario, {productos_preparados} de preparaciones'
-        elif productos_preparados > 0:
-            observaciones = f'Venta directa desde productos preparados ({productos_preparados} producto(s))'
-        else:
-            observaciones = 'Venta directa desde inventario'
-
+        # Observaciones
+        observaciones = 'Venta directa desde inventario'
         if data.get('observaciones'):
             observaciones += f' | {data.get("observaciones")}'
 
@@ -1251,23 +1158,12 @@ def registrar_venta_directa():
                 subtotal_linea
             ))
 
-            # Descontar del origen correspondiente
-            origen = prod.get('origen', 'inventario')
-
-            if origen == 'preparado':
-                # Descontar de preparaciones_detalle
-                cursor.execute('''
-                    UPDATE preparaciones_detalle
-                    SET cantidad_vendida = cantidad_vendida + ?
-                    WHERE id_preparacion = ? AND id_producto = ?
-                ''', (prod['cantidad_pares'], prod['id_preparacion'], prod['id_producto']))
-            else:
-                # Descontar del inventario
-                cursor.execute('''
-                    UPDATE inventario
-                    SET cantidad_pares = cantidad_pares - ?
-                    WHERE id_inventario = ?
-                ''', (prod['cantidad_pares'], prod['id_inventario']))
+            # Descontar del inventario
+            cursor.execute('''
+                UPDATE inventario
+                SET cantidad_pares = cantidad_pares - ?
+                WHERE id_inventario = ?
+            ''', (prod['cantidad_pares'], prod['id_inventario']))
 
         # Si es venta a crédito, crear cuenta por cobrar (incluso para clientes desconocidos)
         pago_inicial = data.get('pago_inicial', 0) or 0

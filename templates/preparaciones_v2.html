@@ -54,13 +54,11 @@
                         <th>Fecha</th>
                         <th>Semana</th>
                         <th>Día Venta</th>
-                        <th>Origen</th>
+                        <th>Origen → Destino</th>
                         <th>Productos</th>
                         <th>Total Pares</th>
-                        <th>Vendido</th>
-                        <th>Pendiente</th>
                         <th>Estado</th>
-                        <th>Progreso</th>
+                        <th>Acciones</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -70,39 +68,41 @@
                         <td>{{ prep.fecha_preparacion }}</td>
                         <td><span class="badge bg-secondary semana-badge"></span></td>
                         <td><span class="badge bg-primary">{{ prep.dia_venta }}</span></td>
-                        <td>{{ prep.ubicacion_origen }}</td>
+                        <td>
+                            <strong>{{ prep.ubicacion_origen }}</strong>
+                            <i class="bi bi-arrow-right text-primary"></i>
+                            <strong class="text-info">{{ prep.ubicacion_destino or 'Sin asignar' }}</strong>
+                        </td>
                         <td>{{ prep.total_productos or 0 }}</td>
                         <td>{{ prep.total_pares or 0 }}</td>
-                        <td><span class="text-success"><strong>{{ prep.total_vendido or 0 }}</strong></span></td>
-                        <td>
-                            {% if (prep.pendiente_vender or 0) > 0 %}
-                                <strong class="text-warning">{{ prep.pendiente_vender }}</strong>
-                            {% else %}
-                                <span class="text-muted">0</span>
-                            {% endif %}
-                        </td>
                         <td>
                             {% if prep.estado == 'pendiente' %}
-                                <span class="badge bg-warning">Pendiente</span>
+                                <span class="badge bg-warning text-dark">Pendiente</span>
                             {% elif prep.estado == 'en_proceso' %}
                                 <span class="badge bg-info">En Proceso</span>
+                            {% elif prep.estado == 'completada' %}
+                                <span class="badge bg-success">Completada</span>
+                            {% elif prep.estado == 'cancelada' %}
+                                <span class="badge bg-danger">Cancelada</span>
                             {% else %}
-                                <span class="badge bg-success">Finalizado</span>
+                                <span class="badge bg-secondary">{{ prep.estado }}</span>
                             {% endif %}
                         </td>
                         <td>
-                            {% set total = prep.total_pares or 0 %}
-                            {% set vendido = prep.total_vendido or 0 %}
-                            {% if total > 0 %}
-                                {% set porcentaje = (vendido / total * 100)|round|int %}
-                                <div class="progress" style="width: 120px; height: 20px;">
-                                    <div class="progress-bar {% if porcentaje == 100 %}bg-success{% elif porcentaje > 0 %}bg-info{% else %}bg-secondary{% endif %}"
-                                         style="width: {{ porcentaje }}%">
-                                        {{ porcentaje }}%
-                                    </div>
-                                </div>
+                            {% if prep.estado in ['pendiente', 'en_proceso'] and prep.id_ubicacion_destino %}
+                                <button class="btn btn-sm btn-success" onclick="confirmarLlegada({{ prep.id_preparacion }}, '{{ prep.codigo_preparacion }}')">
+                                    <i class="bi bi-check-circle"></i> Confirmar Llegada
+                                </button>
+                            {% elif prep.estado == 'completada' %}
+                                <span class="text-muted">
+                                    <i class="bi bi-check-circle-fill text-success"></i> Llegó {{ prep.fecha_completada }}
+                                </span>
+                            {% elif not prep.id_ubicacion_destino %}
+                                <span class="text-warning" title="Falta asignar destino">
+                                    <i class="bi bi-exclamation-triangle"></i> Sin destino
+                                </span>
                             {% else %}
-                                <span class="text-muted">-</span>
+                                -
                             {% endif %}
                         </td>
                     </tr>
@@ -195,6 +195,32 @@ function filtrarPeriodo(periodo) {
         'este-mes': 'Mostrando preparaciones de este mes'
     };
     document.getElementById('resultado-filtro').textContent = mensajes[periodo];
+}
+
+// Confirmar llegada de preparación
+function confirmarLlegada(idPreparacion, codigoPreparacion) {
+    if (!confirm(`¿Confirmar que la preparación ${codigoPreparacion} llegó a su destino?\n\nEsto moverá el inventario de origen a destino.`)) {
+        return;
+    }
+
+    fetch(`/api/preparaciones/confirmar-llegada/${idPreparacion}`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✅ Llegada confirmada. El inventario se movió correctamente.');
+            location.reload();
+        } else {
+            alert('❌ Error: ' + (data.error || 'No se pudo confirmar la llegada'));
+        }
+    })
+    .catch(error => {
+        alert('❌ Error de conexión: ' + error.message);
+    });
 }
 </script>
 
