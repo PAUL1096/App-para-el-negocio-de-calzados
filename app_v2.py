@@ -560,52 +560,14 @@ def ventas():
 
 @app.route('/ventas/nueva/<int:id_preparacion>')
 def venta_nueva(id_preparacion):
-    """Formulario para registrar venta desde preparación"""
-    conn = get_db()
-    cursor = conn.cursor()
+    """RUTA DESHABILITADA - Redirige al nuevo sistema de ventas multi-producto
 
-    # Obtener preparación
-    cursor.execute('SELECT * FROM preparaciones WHERE id_preparacion = ?', (id_preparacion,))
-    preparacion = cursor.fetchone()
-
-    if not preparacion:
-        flash('Preparación no encontrada', 'danger')
-        return redirect(url_for('ventas'))
-
-    # Obtener productos disponibles en la preparación
-    cursor.execute('''
-        SELECT
-            pd.*,
-            p.cuero,
-            p.color_cuero,
-            p.suela,
-            p.forro,
-            p.serie_tallas,
-            p.pares_por_docena,
-            p.precio_sugerido,
-            vb.codigo_interno,
-            vb.tipo_calzado,
-            (pd.cantidad_pares - pd.cantidad_vendida - pd.cantidad_devuelta) as disponible
-        FROM preparaciones_detalle pd
-        JOIN productos_producidos p ON pd.id_producto = p.id_producto
-        JOIN variantes_base vb ON p.id_variante_base = vb.id_variante_base
-        WHERE pd.id_preparacion = ?
-        AND (pd.cantidad_pares - pd.cantidad_vendida - pd.cantidad_devuelta) > 0
-        ORDER BY pd.tipo_stock, vb.codigo_interno
-    ''', (id_preparacion,))
-
-    productos_disponibles = cursor.fetchall()
-
-    # Obtener lista de clientes para el selector
-    cursor.execute('SELECT * FROM clientes WHERE activo = 1 ORDER BY nombre')
-    clientes = cursor.fetchall()
-
-    conn.close()
-
-    return render_template('venta_nueva_v2.html',
-                         preparacion=preparacion,
-                         productos_disponibles=productos_disponibles,
-                         clientes=clientes)
+    Nota: Las preparaciones son solo para alistar mercadería.
+    Para registrar ventas, usa el módulo de Ventas con carrito de compras.
+    """
+    flash('⚠️ El flujo de ventas ha cambiado. Las preparaciones son solo para alistar mercadería. '
+          'Usa el módulo de Ventas para registrar ventas con múltiples productos.', 'info')
+    return redirect(url_for('venta_directa_nueva'))
 
 @app.route('/api/ventas/registrar', methods=['POST'])
 def registrar_venta():

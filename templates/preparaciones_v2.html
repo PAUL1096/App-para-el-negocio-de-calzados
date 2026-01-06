@@ -4,11 +4,20 @@
 <div class="page-header d-flex justify-content-between align-items-center">
     <div>
         <h1><i class="bi bi-box-seam"></i> Preparaciones de Mercadería</h1>
-        <p class="text-muted">Preparar productos del inventario para ventas</p>
+        <p class="text-muted">Alistar productos para transportar (NO es venta directa)</p>
     </div>
     <a href="/preparaciones/nueva" class="btn btn-primary">
         <i class="bi bi-plus-circle"></i> Nueva Preparación
     </a>
+</div>
+
+<!-- Banner informativo -->
+<div class="alert alert-info mb-3">
+    <strong><i class="bi bi-info-circle"></i> ¿Qué es una Preparación?</strong>
+    <p class="mb-0 mt-2">
+        Las preparaciones sirven para <strong>alistar y organizar mercadería</strong> que se transportará para vender.
+        Para registrar ventas, usa el módulo <a href="/ventas" class="alert-link"><strong>Ventas</strong></a>.
+    </p>
 </div>
 
 <!-- Filtros por período -->
@@ -51,7 +60,7 @@
                         <th>Vendido</th>
                         <th>Pendiente</th>
                         <th>Estado</th>
-                        <th>Acciones</th>
+                        <th>Progreso</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -82,12 +91,18 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if prep.pendiente_vender > 0 %}
-                            <a href="/ventas/nueva/{{ prep.id_preparacion }}" class="btn btn-sm btn-success">
-                                <i class="bi bi-cart-plus"></i> Vender
-                            </a>
+                            {% set total = prep.total_pares or 0 %}
+                            {% set vendido = prep.total_vendido or 0 %}
+                            {% if total > 0 %}
+                                {% set porcentaje = (vendido / total * 100)|round|int %}
+                                <div class="progress" style="width: 120px; height: 20px;">
+                                    <div class="progress-bar {% if porcentaje == 100 %}bg-success{% elif porcentaje > 0 %}bg-info{% else %}bg-secondary{% endif %}"
+                                         style="width: {{ porcentaje }}%">
+                                        {{ porcentaje }}%
+                                    </div>
+                                </div>
                             {% else %}
-                            <span class="text-muted small">✓ Completado</span>
+                                <span class="text-muted">-</span>
                             {% endif %}
                         </td>
                     </tr>
