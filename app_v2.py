@@ -1344,6 +1344,13 @@ def crear_cliente():
         conn = get_db()
         cursor = conn.cursor()
 
+        # Convertir cadenas vacías a None para campos únicos (permite múltiples NULL)
+        numero_documento = data.get('numero_documento', '').strip()
+        numero_documento = numero_documento if numero_documento else None
+
+        email = data.get('email', '').strip()
+        email = email if email else None
+
         cursor.execute('''
             INSERT INTO clientes
             (nombre, apellido, nombre_comercial, tipo_documento, numero_documento,
@@ -1354,9 +1361,9 @@ def crear_cliente():
             data.get('apellido', ''),
             data.get('nombre_comercial', ''),
             data.get('tipo_documento', 'DNI'),
-            data.get('numero_documento', ''),
+            numero_documento,  # None si está vacío, permite múltiples clientes sin documento
             data.get('telefono', ''),
-            data.get('email', ''),
+            email,  # None si está vacío
             data.get('direccion', ''),
             data.get('limite_credito', 0),
             data.get('dias_credito', 30),
@@ -1373,8 +1380,14 @@ def crear_cliente():
             'id_cliente': id_cliente
         })
 
-    except sqlite3.IntegrityError:
-        return jsonify({'success': False, 'error': 'El número de documento ya existe'}), 400
+    except sqlite3.IntegrityError as e:
+        error_msg = str(e)
+        if 'numero_documento' in error_msg:
+            return jsonify({'success': False, 'error': f'Ya existe un cliente con el documento ingresado'}), 400
+        elif 'email' in error_msg:
+            return jsonify({'success': False, 'error': f'Ya existe un cliente con ese email'}), 400
+        else:
+            return jsonify({'success': False, 'error': 'Error: dato duplicado en el sistema'}), 400
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
