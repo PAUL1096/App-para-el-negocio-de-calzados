@@ -38,7 +38,13 @@ def migrar():
 
         print("✅ Tabla encontrada")
 
-        print("\n📋 Paso 2: Obteniendo estructura de la tabla...")
+        print("\n📋 Paso 2: Limpiando backups previos...")
+
+        # Eliminar tabla backup si existe de ejecuciones anteriores
+        cursor.execute("DROP TABLE IF EXISTS cuentas_por_cobrar_backup")
+        print("✅ Backups previos eliminados")
+
+        print("\n📋 Paso 3: Obteniendo estructura de la tabla...")
 
         # Obtener nombres de columnas
         cursor.execute("PRAGMA table_info(cuentas_por_cobrar)")
@@ -47,7 +53,7 @@ def migrar():
 
         print(f"✅ Tabla tiene {len(columnas)} columnas")
 
-        print("\n📋 Paso 3: Respaldando datos existentes...")
+        print("\n📋 Paso 4: Respaldando datos existentes...")
 
         # Copiar datos a tabla temporal
         cursor.execute('''
@@ -58,7 +64,7 @@ def migrar():
         registros = cursor.execute('SELECT COUNT(*) FROM cuentas_por_cobrar_backup').fetchone()[0]
         print(f"✅ {registros} registros respaldados")
 
-        print("\n📋 Paso 4: Recreando tabla sin restricción NOT NULL...")
+        print("\n📋 Paso 5: Recreando tabla sin restricción NOT NULL...")
 
         # Eliminar tabla original
         cursor.execute('DROP TABLE cuentas_por_cobrar')
