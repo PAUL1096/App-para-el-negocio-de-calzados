@@ -364,11 +364,14 @@ def ingresar_inventario():
         cantidad_ya_ingresada = producto['cantidad_ingresada'] or 0
         cantidad_pendiente = cantidad_total - cantidad_ya_ingresada
 
+        # Convertir cantidad a entero
+        cantidad_a_ingresar = int(data['cantidad_pares'])
+
         # Validar que no se ingrese más de lo pendiente
-        if data['cantidad_pares'] > cantidad_pendiente:
+        if cantidad_a_ingresar > cantidad_pendiente:
             return jsonify({
                 'success': False,
-                'error': f'No puedes ingresar {data["cantidad_pares"]} pares. Solo quedan {cantidad_pendiente} pares pendientes de ingresar.'
+                'error': f'No puedes ingresar {cantidad_a_ingresar} pares. Solo quedan {cantidad_pendiente} pares pendientes de ingresar.'
             }), 400
 
         # Verificar si ya existe inventario para este producto en esta ubicación
@@ -386,7 +389,7 @@ def ingresar_inventario():
                 UPDATE inventario
                 SET cantidad_pares = cantidad_pares + ?
                 WHERE id_inventario = ?
-            ''', (data['cantidad_pares'], inventario_existente['id_inventario']))
+            ''', (cantidad_a_ingresar, inventario_existente['id_inventario']))
         else:
             # Crear nuevo registro de inventario
             cursor.execute('''
@@ -397,7 +400,7 @@ def ingresar_inventario():
                 data['id_producto'],
                 data['id_ubicacion'],
                 data.get('tipo_stock', 'general'),
-                data['cantidad_pares']
+                cantidad_a_ingresar
             ))
 
         # Actualizar cantidad_ingresada en productos_producidos
@@ -405,12 +408,12 @@ def ingresar_inventario():
             UPDATE productos_producidos
             SET cantidad_ingresada = cantidad_ingresada + ?
             WHERE id_producto = ?
-        ''', (data['cantidad_pares'], data['id_producto']))
+        ''', (cantidad_a_ingresar, data['id_producto']))
 
         conn.commit()
 
         # Verificar si el producto está completamente ingresado
-        nueva_cantidad_ingresada = cantidad_ya_ingresada + data['cantidad_pares']
+        nueva_cantidad_ingresada = cantidad_ya_ingresada + cantidad_a_ingresar
         esta_completo = nueva_cantidad_ingresada >= cantidad_total
 
         conn.close()

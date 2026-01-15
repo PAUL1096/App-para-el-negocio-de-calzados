@@ -264,6 +264,7 @@ function registrarPago(saldoCompleto = false) {
         id_venta: {{ venta.id_venta }},
         monto_pago: saldoCompleto ? {{ cuenta.saldo_pendiente if cuenta else 0 }} : parseFloat(document.getElementById('monto_pago').value),
         metodo_pago: saldoCompleto ? 'efectivo' : document.getElementById('metodo_pago').value,
+        fecha_pago: new Date().toISOString().split('T')[0],
         observaciones: saldoCompleto ? 'Pago de saldo completo' : document.getElementById('observaciones').value
     };
 
