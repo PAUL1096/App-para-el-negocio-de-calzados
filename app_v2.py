@@ -44,7 +44,7 @@ def index():
     cursor.execute('''
         SELECT
             COUNT(*) as cantidad,
-            COALESCE(SUM(monto_total), 0) as monto_total
+            COALESCE(SUM(total_final), 0) as monto_total
         FROM ventas_v2
         WHERE DATE(fecha_venta) = DATE("now")
     ''')
@@ -54,7 +54,7 @@ def index():
     cursor.execute('''
         SELECT
             COUNT(*) as cantidad,
-            COALESCE(SUM(monto_total), 0) as monto_total
+            COALESCE(SUM(total_final), 0) as monto_total
         FROM ventas_v2
         WHERE strftime('%Y-%m', fecha_venta) = strftime('%Y-%m', 'now')
     ''')
