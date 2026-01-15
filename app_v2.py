@@ -1591,11 +1591,12 @@ def cuentas_por_cobrar():
             c.*,
             cl.nombre,
             cl.apellido,
-            cl.nombre_comercial
+            cl.nombre_comercial,
+            CAST(JULIANDAY('now') - JULIANDAY(c.fecha_vencimiento) AS INTEGER) as dias_mora
         FROM cuentas_por_cobrar c
-        JOIN clientes cl ON c.id_cliente = cl.id_cliente
+        LEFT JOIN clientes cl ON c.id_cliente = cl.id_cliente
         WHERE c.estado = 'vencida' AND c.saldo_pendiente > 0
-        ORDER BY c.dias_mora DESC, c.saldo_pendiente DESC
+        ORDER BY dias_mora DESC, c.saldo_pendiente DESC
         LIMIT 10
     ''')
     cuentas_vencidas = cursor.fetchall()
