@@ -38,7 +38,16 @@ def migrar():
 
         print("✅ Tabla encontrada")
 
-        print("\n📋 Paso 2: Respaldando datos existentes...")
+        print("\n📋 Paso 2: Obteniendo estructura de la tabla...")
+
+        # Obtener nombres de columnas
+        cursor.execute("PRAGMA table_info(cuentas_por_cobrar)")
+        columnas_info = cursor.fetchall()
+        columnas = [col[1] for col in columnas_info]  # col[1] es el nombre de la columna
+
+        print(f"✅ Tabla tiene {len(columnas)} columnas")
+
+        print("\n📋 Paso 3: Respaldando datos existentes...")
 
         # Copiar datos a tabla temporal
         cursor.execute('''
@@ -49,12 +58,12 @@ def migrar():
         registros = cursor.execute('SELECT COUNT(*) FROM cuentas_por_cobrar_backup').fetchone()[0]
         print(f"✅ {registros} registros respaldados")
 
-        print("\n📋 Paso 3: Recreando tabla sin restricción NOT NULL...")
+        print("\n📋 Paso 4: Recreando tabla sin restricción NOT NULL...")
 
         # Eliminar tabla original
         cursor.execute('DROP TABLE cuentas_por_cobrar')
 
-        # Recrear tabla permitiendo id_cliente NULL
+        # Recrear tabla permitiendo id_cliente NULL (manteniendo todas las columnas originales)
         cursor.execute('''
             CREATE TABLE cuentas_por_cobrar (
                 id_cuenta INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -69,6 +78,8 @@ def migrar():
                 fecha_vencimiento DATE,
                 estado TEXT DEFAULT 'pendiente',
                 observaciones TEXT,
+                fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                fecha_actualizacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente),
                 FOREIGN KEY (id_venta) REFERENCES ventas_v2(id_venta)
             )
@@ -76,12 +87,13 @@ def migrar():
 
         print("✅ Tabla recreada con id_cliente nullable")
 
-        print("\n📋 Paso 4: Restaurando datos...")
+        print("\n📋 Paso 5: Restaurando datos...")
 
-        # Restaurar datos
-        cursor.execute('''
-            INSERT INTO cuentas_por_cobrar
-            SELECT * FROM cuentas_por_cobrar_backup
+        # Restaurar datos (mapear solo columnas que existen en backup)
+        columnas_str = ', '.join(columnas)
+        cursor.execute(f'''
+            INSERT INTO cuentas_por_cobrar ({columnas_str})
+            SELECT {columnas_str} FROM cuentas_por_cobrar_backup
         ''')
 
         print(f"✅ {registros} registros restaurados")
