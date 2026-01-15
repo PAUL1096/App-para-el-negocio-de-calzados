@@ -113,6 +113,77 @@
     </div>
 </div>
 
+<!-- Cuentas por Cobrar VIGENTES (al día, no vencidas) -->
+<div class="card mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-check-circle"></i> Cuentas por Cobrar Vigentes (Al Día)</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Cliente</th>
+                        <th>Concepto</th>
+                        <th>Monto Total</th>
+                        <th>Saldo</th>
+                        <th>F. Vencimiento</th>
+                        <th>Días Restantes</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cuenta in cuentas_vigentes %}
+                    <tr>
+                        <td><strong>{{ cuenta.codigo_cuenta }}</strong></td>
+                        <td>
+                            {% if cuenta.nombre %}
+                                {{ cuenta.nombre }} {{ cuenta.apellido or '' }}
+                                {% if cuenta.nombre_comercial %}
+                                <br><small class="text-muted">{{ cuenta.nombre_comercial }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Cliente Desconocido</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ cuenta.concepto }}</small></td>
+                        <td>S/ {{ "%.2f"|format(cuenta.monto_total) }}</td>
+                        <td class="text-success"><strong>S/ {{ "%.2f"|format(cuenta.saldo_pendiente) }}</strong></td>
+                        <td><small>{{ cuenta.fecha_vencimiento }}</small></td>
+                        <td>
+                            {% if cuenta.dias_restantes <= 5 %}
+                                <span class="badge bg-warning">{{ cuenta.dias_restantes }} días</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ cuenta.dias_restantes }} días</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                {% if cuenta.id_venta %}
+                                <a href="/ventas/detalle/{{ cuenta.id_venta }}" class="btn btn-sm btn-info" title="Ver Venta">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% endif %}
+                                <button class="btn btn-sm btn-success" onclick="registrarPago({{ cuenta.id_cuenta }})" title="Registrar Pago">
+                                    <i class="bi bi-cash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">
+                            No hay cuentas por cobrar vigentes
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
 <!-- Ventas pendientes de pago -->
 <div class="card mb-4">
     <div class="card-header bg-warning">

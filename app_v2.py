@@ -1601,6 +1601,22 @@ def cuentas_por_cobrar():
     ''')
     cuentas_vencidas = cursor.fetchall()
 
+    # Cuentas por cobrar VIGENTES (pendientes, no vencidas)
+    cursor.execute('''
+        SELECT
+            c.*,
+            cl.nombre,
+            cl.apellido,
+            cl.nombre_comercial,
+            CAST(JULIANDAY(c.fecha_vencimiento) - JULIANDAY('now') AS INTEGER) as dias_restantes
+        FROM cuentas_por_cobrar c
+        LEFT JOIN clientes cl ON c.id_cliente = cl.id_cliente
+        WHERE c.estado = 'pendiente' AND c.saldo_pendiente > 0
+        ORDER BY c.fecha_vencimiento ASC, c.saldo_pendiente DESC
+        LIMIT 50
+    ''')
+    cuentas_vigentes = cursor.fetchall()
+
     # Ventas pendientes sin cuenta por cobrar
     cursor.execute('''
         SELECT
@@ -1654,6 +1670,7 @@ def cuentas_por_cobrar():
     return render_template('cuentas_por_cobrar.html',
                          stats=stats,
                          cuentas_vencidas=cuentas_vencidas,
+                         cuentas_vigentes=cuentas_vigentes,
                          ventas_pendientes=ventas_pendientes,
                          top_deudores=top_deudores,
                          clientes=clientes)
