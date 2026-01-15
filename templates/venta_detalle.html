@@ -231,6 +231,12 @@
                         </select>
                     </div>
                     <div class="mb-3">
+                        <label class="form-label">Fecha de Pago *</label>
+                        <input type="date" class="form-control" id="fecha_pago" name="fecha_pago"
+                               value="{{ fecha_hoy }}" required>
+                        <small class="text-muted">Fecha en que se recibió el pago</small>
+                    </div>
+                    <div class="mb-3">
                         <label class="form-label">Observaciones</label>
                         <textarea class="form-control" id="observaciones" name="observaciones" rows="2"></textarea>
                     </div>
@@ -264,7 +270,7 @@ function registrarPago(saldoCompleto = false) {
         id_venta: {{ venta.id_venta }},
         monto_pago: saldoCompleto ? {{ cuenta.saldo_pendiente if cuenta else 0 }} : parseFloat(document.getElementById('monto_pago').value),
         metodo_pago: saldoCompleto ? 'efectivo' : document.getElementById('metodo_pago').value,
-        fecha_pago: new Date().toISOString().split('T')[0],
+        fecha_pago: saldoCompleto ? new Date().toISOString().split('T')[0] : document.getElementById('fecha_pago').value,
         observaciones: saldoCompleto ? 'Pago de saldo completo' : document.getElementById('observaciones').value
     };
 

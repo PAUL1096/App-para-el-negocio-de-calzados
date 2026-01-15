@@ -925,11 +925,14 @@ def venta_detalle(id_venta):
 
     conn.close()
 
+    fecha_hoy = datetime.now().strftime('%Y-%m-%d')
+
     return render_template('venta_detalle.html',
                          venta=venta,
                          detalles=detalles,
                          cuenta=cuenta,
-                         pagos=pagos)
+                         pagos=pagos,
+                         fecha_hoy=fecha_hoy)
 
 @app.route('/ventas/nueva/<int:id_preparacion>')
 def venta_nueva(id_preparacion):
