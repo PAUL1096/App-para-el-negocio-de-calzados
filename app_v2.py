@@ -26,11 +26,11 @@ def get_db():
 
 @app.route('/')
 def index():
-    """Dashboard principal"""
+    """Dashboard principal con métricas de negocio"""
     conn = get_db()
     cursor = conn.cursor()
 
-    # Estadísticas
+    # ===== MÉTRICAS BÁSICAS =====
     cursor.execute('SELECT COUNT(*) as total FROM variantes_base WHERE activo = 1')
     total_variantes = cursor.fetchone()['total']
 
@@ -40,8 +40,54 @@ def index():
     cursor.execute('SELECT COALESCE(SUM(cantidad_pares), 0) as total FROM inventario')
     total_stock = cursor.fetchone()['total']
 
-    cursor.execute('SELECT COUNT(*) as total FROM ventas_v2 WHERE DATE(fecha_venta) = DATE("now")')
-    ventas_hoy = cursor.fetchone()['total']
+    # ===== VENTAS HOY =====
+    cursor.execute('''
+        SELECT
+            COUNT(*) as cantidad,
+            COALESCE(SUM(monto_total), 0) as monto_total
+        FROM ventas_v2
+        WHERE DATE(fecha_venta) = DATE("now")
+    ''')
+    ventas_hoy = cursor.fetchone()
+
+    # ===== VENTAS DEL MES =====
+    cursor.execute('''
+        SELECT
+            COUNT(*) as cantidad,
+            COALESCE(SUM(monto_total), 0) as monto_total
+        FROM ventas_v2
+        WHERE strftime('%Y-%m', fecha_venta) = strftime('%Y-%m', 'now')
+    ''')
+    ventas_mes = cursor.fetchone()
+
+    # ===== CUENTAS POR COBRAR =====
+    cursor.execute('''
+        SELECT
+            COUNT(*) as cantidad,
+            COALESCE(SUM(saldo_pendiente), 0) as monto_total
+        FROM cuentas_por_cobrar
+        WHERE estado = 'pendiente' AND saldo_pendiente > 0
+    ''')
+    cuentas_pendientes = cursor.fetchone()
+
+    # ===== PRODUCTOS PENDIENTES DE INGRESAR =====
+    cursor.execute('''
+        SELECT
+            COUNT(*) as cantidad,
+            COALESCE(SUM(cantidad_total_pares - COALESCE(cantidad_ingresada, 0)), 0) as pares_pendientes
+        FROM productos_producidos
+        WHERE cantidad_total_pares > COALESCE(cantidad_ingresada, 0)
+        AND activo = 1
+    ''')
+    pendientes_ingreso = cursor.fetchone()
+
+    # ===== PREPARACIONES ACTIVAS =====
+    cursor.execute('''
+        SELECT COUNT(*) as total
+        FROM preparaciones
+        WHERE estado = 'pendiente'
+    ''')
+    preparaciones_activas = cursor.fetchone()['total']
 
     conn.close()
 
@@ -49,7 +95,23 @@ def index():
         'variantes': total_variantes,
         'productos': total_productos,
         'stock': total_stock,
-        'ventas_hoy': ventas_hoy
+        'ventas_hoy': {
+            'cantidad': ventas_hoy['cantidad'],
+            'monto': ventas_hoy['monto_total']
+        },
+        'ventas_mes': {
+            'cantidad': ventas_mes['cantidad'],
+            'monto': ventas_mes['monto_total']
+        },
+        'cuentas_por_cobrar': {
+            'cantidad': cuentas_pendientes['cantidad'],
+            'monto': cuentas_pendientes['monto_total']
+        },
+        'pendientes_ingreso': {
+            'cantidad': pendientes_ingreso['cantidad'],
+            'pares': pendientes_ingreso['pares_pendientes']
+        },
+        'preparaciones_activas': preparaciones_activas
     }
 
     return render_template('index_v2.html', stats=stats)
