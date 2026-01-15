@@ -80,7 +80,7 @@ def migrar():
         # Para productos ya existentes, asumir que ya fueron ingresados completamente
         cursor.execute('''
             UPDATE productos_producidos
-            SET cantidad_ingresada = cantidad_pares
+            SET cantidad_ingresada = cantidad_total_pares
             WHERE cantidad_ingresada IS NULL OR cantidad_ingresada = 0
         ''')
 
