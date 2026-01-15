@@ -267,7 +267,7 @@ function registrarPago(saldoCompleto = false) {
         observaciones: saldoCompleto ? 'Pago de saldo completo' : document.getElementById('observaciones').value
     };
 
-    fetch('/api/cuentas-por-cobrar/registrar-pago', {
+    fetch('/api/pagos/registrar', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(formData)

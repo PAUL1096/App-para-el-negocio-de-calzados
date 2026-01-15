@@ -183,7 +183,8 @@ def produccion():
             COALESCE(SUM(i.cantidad_pares), 0) as stock_actual,
             COALESCE(SUM(CASE WHEN i.tipo_stock = 'general' THEN i.cantidad_pares ELSE 0 END), 0) as stock_general,
             COALESCE(SUM(CASE WHEN i.tipo_stock = 'pedido' THEN i.cantidad_pares ELSE 0 END), 0) as stock_pedido,
-            COUNT(i.id_inventario) as tiene_registros_inventario
+            COUNT(i.id_inventario) as tiene_registros_inventario,
+            (p.cantidad_total_pares - COALESCE(p.cantidad_ingresada, 0)) as pendiente_ingresar
         FROM productos_producidos p
         JOIN variantes_base v ON p.id_variante_base = v.id_variante_base
         LEFT JOIN inventario i ON p.id_producto = i.id_producto
@@ -229,22 +230,24 @@ def crear_producto():
 
         cursor.execute('''
             INSERT INTO productos_producidos
-            (id_variante_base, cuero, color_cuero, suela, forro, serie_tallas,
+            (id_variante_base, cuero, color_cuero, suela, forro, material_plantilla, serie_tallas,
              pares_por_docena, costo_unitario, precio_sugerido, fecha_produccion,
-             cantidad_total_pares, observaciones)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             cantidad_total_pares, cantidad_ingresada, observaciones)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
         ''', (
             data['id_variante_base'],
             data['cuero'],
             data['color_cuero'],
             data['suela'],
             data.get('forro', ''),
+            data['material_plantilla'],
             data['serie_tallas'],
-            data.get('pares_por_docena', 12),
+            12,  # Siempre 12 pares por docena (hardcoded)
             data['costo_unitario'],
             data['precio_sugerido'],
             data.get('fecha_produccion', datetime.now().strftime('%Y-%m-%d')),
             data['cantidad_total_pares'],
+            0,  # cantidad_ingresada inicial = 0 (aún no se ingresa al inventario)
             data.get('observaciones', '')
         ))
 
@@ -339,33 +342,168 @@ def inventario_ingresar_form(id_producto):
 
 @app.route('/api/inventario/ingresar', methods=['POST'])
 def ingresar_inventario():
-    """API para ingresar producto al inventario"""
+    """API para ingresar producto al inventario (soporta ingresos parciales)"""
     try:
         data = request.json
 
         conn = get_db()
         cursor = conn.cursor()
 
+        # Obtener información del producto
         cursor.execute('''
-            INSERT INTO inventario
-            (id_producto, id_ubicacion, tipo_stock, cantidad_pares)
-            VALUES (?, ?, ?, ?)
-        ''', (
-            data['id_producto'],
-            data['id_ubicacion'],
-            data.get('tipo_stock', 'general'),
-            data['cantidad_pares']
-        ))
+            SELECT cantidad_total_pares, cantidad_ingresada
+            FROM productos_producidos
+            WHERE id_producto = ?
+        ''', (data['id_producto'],))
+
+        producto = cursor.fetchone()
+        if not producto:
+            return jsonify({'success': False, 'error': 'Producto no encontrado'}), 404
+
+        cantidad_total = producto['cantidad_total_pares']
+        cantidad_ya_ingresada = producto['cantidad_ingresada'] or 0
+        cantidad_pendiente = cantidad_total - cantidad_ya_ingresada
+
+        # Validar que no se ingrese más de lo pendiente
+        if data['cantidad_pares'] > cantidad_pendiente:
+            return jsonify({
+                'success': False,
+                'error': f'No puedes ingresar {data["cantidad_pares"]} pares. Solo quedan {cantidad_pendiente} pares pendientes de ingresar.'
+            }), 400
+
+        # Verificar si ya existe inventario para este producto en esta ubicación
+        cursor.execute('''
+            SELECT id_inventario, cantidad_pares
+            FROM inventario
+            WHERE id_producto = ? AND id_ubicacion = ? AND tipo_stock = ?
+        ''', (data['id_producto'], data['id_ubicacion'], data.get('tipo_stock', 'general')))
+
+        inventario_existente = cursor.fetchone()
+
+        if inventario_existente:
+            # Actualizar inventario existente
+            cursor.execute('''
+                UPDATE inventario
+                SET cantidad_pares = cantidad_pares + ?
+                WHERE id_inventario = ?
+            ''', (data['cantidad_pares'], inventario_existente['id_inventario']))
+        else:
+            # Crear nuevo registro de inventario
+            cursor.execute('''
+                INSERT INTO inventario
+                (id_producto, id_ubicacion, tipo_stock, cantidad_pares)
+                VALUES (?, ?, ?, ?)
+            ''', (
+                data['id_producto'],
+                data['id_ubicacion'],
+                data.get('tipo_stock', 'general'),
+                data['cantidad_pares']
+            ))
+
+        # Actualizar cantidad_ingresada en productos_producidos
+        cursor.execute('''
+            UPDATE productos_producidos
+            SET cantidad_ingresada = cantidad_ingresada + ?
+            WHERE id_producto = ?
+        ''', (data['cantidad_pares'], data['id_producto']))
+
+        conn.commit()
+
+        # Verificar si el producto está completamente ingresado
+        nueva_cantidad_ingresada = cantidad_ya_ingresada + data['cantidad_pares']
+        esta_completo = nueva_cantidad_ingresada >= cantidad_total
+
+        conn.close()
+
+        mensaje = 'Producto ingresado al inventario exitosamente'
+        if not esta_completo:
+            pendiente_restante = cantidad_total - nueva_cantidad_ingresada
+            mensaje += f' ({pendiente_restante} pares pendientes de ingresar)'
+
+        return jsonify({
+            'success': True,
+            'message': mensaje,
+            'pendiente': cantidad_total - nueva_cantidad_ingresada
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+@app.route('/api/inventario/trasladar', methods=['POST'])
+def trasladar_inventario():
+    """API para trasladar inventario entre ubicaciones"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Iniciar transacción
+        cursor.execute('BEGIN IMMEDIATE')
+
+        # Validar que la ubicación origen tiene suficiente stock
+        cursor.execute('''
+            SELECT cantidad_pares
+            FROM inventario
+            WHERE id_producto = ? AND id_ubicacion = ? AND tipo_stock = ?
+        ''', (data['id_producto'], data['id_ubicacion_origen'], data.get('tipo_stock', 'general')))
+
+        inventario_origen = cursor.fetchone()
+
+        if not inventario_origen:
+            return jsonify({
+                'success': False,
+                'error': 'No existe inventario de este producto en la ubicación origen'
+            }), 404
+
+        if inventario_origen['cantidad_pares'] < data['cantidad_pares']:
+            return jsonify({
+                'success': False,
+                'error': f'Stock insuficiente en origen. Disponible: {inventario_origen["cantidad_pares"]} pares'
+            }), 400
+
+        # Descontar de ubicación origen
+        cursor.execute('''
+            UPDATE inventario
+            SET cantidad_pares = cantidad_pares - ?
+            WHERE id_producto = ? AND id_ubicacion = ? AND tipo_stock = ?
+        ''', (data['cantidad_pares'], data['id_producto'], data['id_ubicacion_origen'], data.get('tipo_stock', 'general')))
+
+        # Verificar si existe inventario en ubicación destino
+        cursor.execute('''
+            SELECT id_inventario, cantidad_pares
+            FROM inventario
+            WHERE id_producto = ? AND id_ubicacion = ? AND tipo_stock = ?
+        ''', (data['id_producto'], data['id_ubicacion_destino'], data.get('tipo_stock', 'general')))
+
+        inventario_destino = cursor.fetchone()
+
+        if inventario_destino:
+            # Actualizar inventario existente
+            cursor.execute('''
+                UPDATE inventario
+                SET cantidad_pares = cantidad_pares + ?
+                WHERE id_inventario = ?
+            ''', (data['cantidad_pares'], inventario_destino['id_inventario']))
+        else:
+            # Crear nuevo registro en destino
+            cursor.execute('''
+                INSERT INTO inventario
+                (id_producto, id_ubicacion, tipo_stock, cantidad_pares)
+                VALUES (?, ?, ?, ?)
+            ''', (data['id_producto'], data['id_ubicacion_destino'], data.get('tipo_stock', 'general'), data['cantidad_pares']))
 
         conn.commit()
         conn.close()
 
         return jsonify({
             'success': True,
-            'message': 'Producto ingresado al inventario exitosamente'
+            'message': f'{data["cantidad_pares"]} pares trasladados exitosamente'
         })
 
     except Exception as e:
+        if conn:
+            conn.rollback()
         return jsonify({'success': False, 'error': str(e)}), 400
 
 # ============================================================================
@@ -456,6 +594,33 @@ def crear_preparacion():
         conn = get_db()
         cursor = conn.cursor()
 
+        # Iniciar transacción INMEDIATA
+        cursor.execute('BEGIN IMMEDIATE')
+
+        # VALIDAR stock disponible ANTES de crear la preparación
+        for item in data.get('productos', []):
+            cursor.execute('''
+                SELECT cantidad_pares
+                FROM inventario
+                WHERE id_inventario = ?
+            ''', (item['id_inventario'],))
+
+            inventario = cursor.fetchone()
+
+            if not inventario:
+                conn.rollback()
+                return jsonify({
+                    'success': False,
+                    'error': f'Inventario no encontrado para producto ID {item["id_producto"]}'
+                }), 404
+
+            if inventario['cantidad_pares'] < item['cantidad_pares']:
+                conn.rollback()
+                return jsonify({
+                    'success': False,
+                    'error': f'Stock insuficiente. Solicitado: {item["cantidad_pares"]} pares, Disponible: {inventario["cantidad_pares"]} pares'
+                }), 400
+
         # Generar código de preparación
         fecha_hoy = datetime.now().strftime('%Y%m%d')
         cursor.execute('SELECT COUNT(*) as total FROM preparaciones WHERE DATE(fecha_preparacion) = DATE(?)', (datetime.now(),))
@@ -478,7 +643,7 @@ def crear_preparacion():
 
         id_preparacion = cursor.lastrowid
 
-        # Agregar productos a la preparación
+        # Agregar productos a la preparación y reducir inventario
         for item in data.get('productos', []):
             cursor.execute('''
                 INSERT INTO preparaciones_detalle
@@ -491,7 +656,7 @@ def crear_preparacion():
                 item['cantidad_pares']
             ))
 
-            # Reducir del inventario
+            # Reducir del inventario (ahora ya validado)
             cursor.execute('''
                 UPDATE inventario
                 SET cantidad_pares = cantidad_pares - ?
@@ -1279,6 +1444,40 @@ def ubicaciones():
     conn.close()
 
     return render_template('ubicaciones.html', ubicaciones=ubicaciones_list)
+
+@app.route('/api/ubicaciones/crear', methods=['POST'])
+def crear_ubicacion():
+    """API para crear nueva ubicación"""
+    try:
+        data = request.json
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO ubicaciones
+            (nombre, tipo, direccion, activo)
+            VALUES (?, ?, ?, 1)
+        ''', (
+            data['nombre'],
+            data['tipo'],
+            data.get('direccion', '')
+        ))
+
+        id_ubicacion = cursor.lastrowid
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': 'Ubicación creada exitosamente',
+            'id_ubicacion': id_ubicacion
+        })
+
+    except sqlite3.IntegrityError:
+        return jsonify({'success': False, 'error': 'Ya existe una ubicación con ese nombre'}), 400
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 # ============================================================================
 # MÓDULO: CUENTAS POR COBRAR
