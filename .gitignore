@@ -43,3 +43,62 @@ wheels/
 # OS
 .DS_Store
 Thumbs.db
+
+# Archivos obsoletos (eliminados del repositorio)
+# Apps antiguas
+app.py
+app_v1_2.py
+app_v1_3.py
+
+# Bases de datos antiguas
+ventas_calzado.db
+inventario_calzado.db
+
+# Scripts de migración (ya ejecutados)
+migracion_v1_2.py
+migracion_v2_modelo_correcto.py
+migracion_codigo_interno.py
+migracion_cuentas_por_cobrar.py
+migracion_fase_3_4.py
+migracion_integracion_ventas_clientes.py
+migracion_permitir_cliente_null.py
+migracion_plantilla_ingresos_parciales.py
+migracion_preparaciones_destino.py
+migracion_ventas_directas.py
+migracion_ventas_multiproducto.py
+reparar_migracion.py
+
+# Scripts temporales
+actualizar_nombres_ubicaciones.py
+actualizar_nombres_ubicaciones.sql
+diagnosticar_codigos_venta.py
+test_codigo_venta.py
+verificar_bd.py
+import_data.py
+datos_simulados_calzado.xlsx
+
+# Templates obsoletos
+templates/analisis.html
+templates/index.html
+templates/index_v13.html
+templates/pedidos_cliente.html
+templates/preparacion_nueva.html
+templates/preparaciones.html
+templates/productos_base.html
+templates/variantes.html
+templates/venta_nueva.html
+templates/ventas.html
+templates/ventas_historicas.html
+
+# Documentación obsoleta
+README_V1_2.md
+README_FASE_3_4.md
+README_V2_MODELO_CORRECTO.md
+GUIA_MIGRACION_V1_2.md
+PLAN_DESARROLLO.md
+ENTREGA_COMPLETA.md
+ESTADO_DESARROLLO.md
+CHANGELOG_VENTAS_MULTIPRODUCTO.md
+
+# Carpetas de archivos obsoletos
+archivos_obsoletos_*/
