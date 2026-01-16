@@ -98,6 +98,18 @@
                             </datalist>
                         </div>
 
+                        <div class="col-md-6">
+                            <label class="form-label">Material de Plantilla *</label>
+                            <input type="text" class="form-control" name="material_plantilla" required
+                                   placeholder="Ej: Plantilla de cuero" list="tipos_plantilla">
+                            <datalist id="tipos_plantilla">
+                                <option value="Plantilla de cuero">
+                                <option value="Plantilla sintética">
+                                <option value="Plantilla acolchada">
+                            </datalist>
+                            <small class="text-muted">Distintivo de calidad del producto</small>
+                        </div>
+
                         <div class="col-md-12">
                             <label class="form-label">Serie de Tallas *</label>
                             <input type="text" class="form-control" name="serie_tallas" required
@@ -105,11 +117,7 @@
                             <small class="text-muted">Formato: Talla(cantidad) separadas por espacio</small>
                         </div>
 
-                        <div class="col-md-4">
-                            <label class="form-label">Pares por Docena</label>
-                            <input type="number" class="form-control" name="pares_por_docena" value="12">
-                        </div>
-                        <div class="col-md-4">
+                        <div class="col-md-6">
                             <label class="form-label">Cantidad Total de Pares *</label>
                             <input type="number" class="form-control" name="cantidad_total_pares" required min="1">
                         </div>

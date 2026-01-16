@@ -1,0 +1,581 @@
+{% extends "base.html" %}
+{% block title %}Cuentas por Cobrar - Sistema Calzado{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-cash-coin"></i> Cuentas por Cobrar</h1>
+    <p class="text-muted">Gestión de deudas y cobranzas</p>
+</div>
+
+<!-- Resumen de cuentas -->
+<div class="row g-3 mb-4">
+    <div class="col-md-3">
+        <div class="card border-primary">
+            <div class="card-body">
+                <h6 class="text-muted">Total por Cobrar</h6>
+                <h3 class="mb-0 text-primary">S/ {{ "%.2f"|format(stats.total_por_cobrar) }}</h3>
+                <small class="text-muted">{{ stats.total_cuentas }} cuenta(s) + {{ stats.total_ventas_pendientes or 0 }} venta(s)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-danger">
+            <div class="card-body">
+                <h6 class="text-muted">Cuentas Vencidas</h6>
+                <h3 class="mb-0 text-danger">S/ {{ "%.2f"|format(stats.total_vencido) }}</h3>
+                <small class="text-danger">⚠️ Requieren atención</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card border-warning">
+            <div class="card-body">
+                <h6 class="text-muted">Ventas Pendientes</h6>
+                <h3 class="mb-0 text-warning">S/ {{ "%.2f"|format(stats.total_pendiente_ventas or 0) }}</h3>
+                <small class="text-muted">{{ stats.total_ventas_pendientes or 0 }} venta(s)</small>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card">
+            <div class="card-body text-center">
+                <a href="/clientes" class="btn btn-outline-primary btn-sm mb-2">
+                    <i class="bi bi-people"></i> Gestionar Clientes
+                </a>
+                <br>
+                <button class="btn btn-primary btn-sm" data-bs-toggle="modal" data-bs-target="#modalNuevaCuenta">
+                    <i class="bi bi-plus-circle"></i> Nueva Cuenta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Cuentas vencidas -->
+<div class="card mb-4">
+    <div class="card-header bg-danger text-white">
+        <h5 class="mb-0"><i class="bi bi-exclamation-triangle"></i> Cuentas Vencidas</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Cliente</th>
+                        <th>Concepto</th>
+                        <th>Monto Total</th>
+                        <th>Saldo</th>
+                        <th>Días Mora</th>
+                        <th>F. Vencimiento</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cuenta in cuentas_vencidas %}
+                    <tr>
+                        <td><strong>{{ cuenta.codigo_cuenta }}</strong></td>
+                        <td>
+                            {{ cuenta.nombre }} {{ cuenta.apellido or '' }}
+                            {% if cuenta.nombre_comercial %}
+                            <br><small class="text-muted">{{ cuenta.nombre_comercial }}</small>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ cuenta.concepto }}</small></td>
+                        <td>S/ {{ "%.2f"|format(cuenta.monto_total) }}</td>
+                        <td class="text-danger"><strong>S/ {{ "%.2f"|format(cuenta.saldo_pendiente) }}</strong></td>
+                        <td>
+                            <span class="badge bg-danger">{{ cuenta.dias_mora }} días</span>
+                        </td>
+                        <td><small>{{ cuenta.fecha_vencimiento }}</small></td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                {% if cuenta.id_venta %}
+                                <a href="/ventas/detalle/{{ cuenta.id_venta }}" class="btn btn-sm btn-info">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% endif %}
+                                <button class="btn btn-sm btn-success" onclick="registrarPago({{ cuenta.id_cuenta }})">
+                                    <i class="bi bi-cash"></i> Pagar
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-success">
+                            ✓ No hay cuentas vencidas
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Cuentas por Cobrar VIGENTES (al día, no vencidas) -->
+<div class="card mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-check-circle"></i> Cuentas por Cobrar Vigentes (Al Día)</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Cliente</th>
+                        <th>Concepto</th>
+                        <th>Monto Total</th>
+                        <th>Saldo</th>
+                        <th>F. Vencimiento</th>
+                        <th>Días Restantes</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cuenta in cuentas_vigentes %}
+                    <tr>
+                        <td><strong>{{ cuenta.codigo_cuenta }}</strong></td>
+                        <td>
+                            {% if cuenta.nombre %}
+                                {{ cuenta.nombre }} {{ cuenta.apellido or '' }}
+                                {% if cuenta.nombre_comercial %}
+                                <br><small class="text-muted">{{ cuenta.nombre_comercial }}</small>
+                                {% endif %}
+                            {% else %}
+                                <span class="text-muted">Cliente Desconocido</span>
+                            {% endif %}
+                        </td>
+                        <td><small>{{ cuenta.concepto }}</small></td>
+                        <td>S/ {{ "%.2f"|format(cuenta.monto_total) }}</td>
+                        <td class="text-success"><strong>S/ {{ "%.2f"|format(cuenta.saldo_pendiente) }}</strong></td>
+                        <td><small>{{ cuenta.fecha_vencimiento }}</small></td>
+                        <td>
+                            {% if cuenta.dias_restantes <= 5 %}
+                                <span class="badge bg-warning">{{ cuenta.dias_restantes }} días</span>
+                            {% else %}
+                                <span class="badge bg-success">{{ cuenta.dias_restantes }} días</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                {% if cuenta.id_venta %}
+                                <a href="/ventas/detalle/{{ cuenta.id_venta }}" class="btn btn-sm btn-info" title="Ver Venta">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                {% endif %}
+                                <button class="btn btn-sm btn-success" onclick="registrarPago({{ cuenta.id_cuenta }})" title="Registrar Pago">
+                                    <i class="bi bi-cash"></i>
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-muted">
+                            No hay cuentas por cobrar vigentes
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Ventas pendientes de pago -->
+<div class="card mb-4">
+    <div class="card-header bg-warning">
+        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Ventas Pendientes de Pago</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>Código</th>
+                        <th>Fecha</th>
+                        <th>Cliente</th>
+                        <th>Total</th>
+                        <th>Estado</th>
+                        <th>Días Pendiente</th>
+                        <th>Método Pago</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for venta in ventas_pendientes %}
+                    <tr>
+                        <td><strong>{{ venta.codigo_venta }}</strong></td>
+                        <td><small>{{ venta.fecha_venta }}</small></td>
+                        <td>
+                            {{ venta.nombre_cliente }}
+                        </td>
+                        <td class="text-warning"><strong>S/ {{ "%.2f"|format(venta.total_final) }}</strong></td>
+                        <td>
+                            {% if venta.estado_pago == 'pendiente' %}
+                            <span class="badge bg-warning">Pendiente</span>
+                            {% else %}
+                            <span class="badge bg-info">Parcial</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ venta.dias_pendiente|int }} días</span>
+                        </td>
+                        <td><small>{{ venta.metodo_pago or 'N/A' }}</small></td>
+                        <td>
+                            <div class="btn-group" role="group">
+                                <a href="/ventas/detalle/{{ venta.id_venta }}" class="btn btn-sm btn-info">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <button class="btn btn-sm btn-primary" onclick="convertirACuenta({{ venta.id_venta }}, '{{ venta.codigo_venta }}', {{ venta.total_final }})">
+                                    <i class="bi bi-file-earmark-plus"></i> Crear Cuenta
+                                </button>
+                            </div>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr>
+                        <td colspan="8" class="text-center text-success">
+                            ✓ No hay ventas pendientes de pago
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Top deudores -->
+<div class="card">
+    <div class="card-header">
+        <h5 class="mb-0"><i class="bi bi-graph-down"></i> Clientes con Mayor Deuda</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead>
+                    <tr>
+                        <th>#</th>
+                        <th>Cliente</th>
+                        <th>Deuda Total</th>
+                        <th>Cuentas/Ventas</th>
+                        <th>Acciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for cliente in top_deudores %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td>
+                            {{ cliente.nombre }} {{ cliente.apellido or '' }}
+                            {% if cliente.nombre_comercial %}
+                            <br><small class="text-muted">{{ cliente.nombre_comercial }}</small>
+                            {% endif %}
+                        </td>
+                        <td class="text-warning"><strong>S/ {{ "%.2f"|format(cliente.deuda_total) }}</strong></td>
+                        <td>
+                            {{ cliente.num_cuentas }} cuenta(s)
+                            {% if cliente.num_ventas_pendientes > 0 %}
+                            <br><small class="text-muted">+ {{ cliente.num_ventas_pendientes }} venta(s)</small>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <a href="/clientes/{{ cliente.id_cliente }}" class="btn btn-sm btn-outline-info">
+                                <i class="bi bi-eye"></i> Ver Detalle
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Nueva Cuenta por Cobrar -->
+<div class="modal fade" id="modalNuevaCuenta" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-plus-circle"></i> Nueva Cuenta por Cobrar</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formNuevaCuenta">
+                    <div class="mb-3">
+                        <label class="form-label">Cliente <span class="text-danger">*</span></label>
+                        <select class="form-select" id="id_cliente" name="id_cliente" required>
+                            <option value="">-- Seleccionar Cliente --</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id_cliente }}">
+                                {{ cliente.nombre }} {{ cliente.apellido or '' }}
+                                {% if cliente.nombre_comercial %}({{ cliente.nombre_comercial }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <small class="text-muted">
+                            <a href="/clientes" target="_blank">+ Crear nuevo cliente</a>
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Concepto <span class="text-danger">*</span></label>
+                        <input type="text" class="form-control" id="concepto" name="concepto"
+                               placeholder="Ej: Venta de calzado, Pedido especial, etc." required>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Monto Total (S/) <span class="text-danger">*</span></label>
+                            <input type="number" class="form-control" id="monto_total" name="monto_total"
+                                   step="0.01" min="0.01" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">ID Venta (opcional)</label>
+                            <input type="number" class="form-control" id="id_venta" name="id_venta"
+                                   placeholder="Dejar vacío si no aplica">
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha Emisión <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="fecha_emision" name="fecha_emision" required>
+                        </div>
+                        <div class="col-md-6 mb-3">
+                            <label class="form-label">Fecha Vencimiento <span class="text-danger">*</span></label>
+                            <input type="date" class="form-control" id="fecha_vencimiento" name="fecha_vencimiento" required>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones_cuenta" name="observaciones" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarNuevaCuenta()">
+                    <i class="bi bi-save"></i> Crear Cuenta
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Modal: Registrar Pago -->
+<div class="modal fade" id="modalRegistrarPago" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title"><i class="bi bi-cash"></i> Registrar Pago</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div id="info-cuenta-pago" class="alert alert-info mb-3">
+                    <!-- Se carga dinámicamente -->
+                </div>
+
+                <form id="formRegistrarPago">
+                    <input type="hidden" id="id_cuenta_pago" name="id_cuenta">
+
+                    <div class="mb-3">
+                        <label class="form-label">Monto a Pagar (S/) <span class="text-danger">*</span></label>
+                        <div class="input-group">
+                            <input type="number" class="form-control" id="monto_pago" name="monto_pago"
+                                   step="0.01" min="0.01" required>
+                            <button type="button" class="btn btn-outline-success" onclick="pagarSaldoCompleto()">
+                                <i class="bi bi-check-all"></i> Pagar Saldo Completo
+                            </button>
+                        </div>
+                        <small class="text-muted">Saldo pendiente: S/ <span id="saldo-pendiente">0.00</span></small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Pago <span class="text-danger">*</span></label>
+                        <input type="date" class="form-control" id="fecha_pago" name="fecha_pago" required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Método de Pago</label>
+                        <select class="form-select" id="metodo_pago" name="metodo_pago">
+                            <option value="efectivo">Efectivo</option>
+                            <option value="transferencia">Transferencia</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="yape">Yape/Plin</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Nro. Comprobante</label>
+                        <input type="text" class="form-control" id="numero_comprobante" name="numero_comprobante"
+                               placeholder="Opcional">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones_pago" name="observaciones" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-success" onclick="guardarPago()">
+                    <i class="bi bi-check-circle"></i> Registrar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Establecer fecha de hoy por defecto
+document.addEventListener('DOMContentLoaded', function() {
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('fecha_emision').value = today;
+    document.getElementById('fecha_pago').value = today;
+
+    // Fecha de vencimiento: 30 días después
+    const vencimiento = new Date();
+    vencimiento.setDate(vencimiento.getDate() + 30);
+    document.getElementById('fecha_vencimiento').value = vencimiento.toISOString().split('T')[0];
+});
+
+// Guardar nueva cuenta por cobrar
+function guardarNuevaCuenta() {
+    const form = document.getElementById('formNuevaCuenta');
+
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const data = {
+        id_cliente: parseInt(document.getElementById('id_cliente').value),
+        concepto: document.getElementById('concepto').value,
+        monto_total: parseFloat(document.getElementById('monto_total').value),
+        id_venta: document.getElementById('id_venta').value ? parseInt(document.getElementById('id_venta').value) : null,
+        fecha_emision: document.getElementById('fecha_emision').value,
+        fecha_vencimiento: document.getElementById('fecha_vencimiento').value,
+        observaciones: document.getElementById('observaciones_cuenta').value
+    };
+
+    fetch('/api/cuentas/crear', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✓ Cuenta creada exitosamente\nCódigo: ' + data.codigo_cuenta);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error al crear cuenta: ' + error);
+    });
+}
+
+// Abrir modal de pago
+function registrarPago(idCuenta) {
+    // Obtener información de la cuenta desde la tabla
+    const row = event.target.closest('tr');
+    const codigo = row.cells[0].textContent.trim();
+    const cliente = row.cells[1].textContent.trim();
+    const saldo = row.cells[4].textContent.replace('S/', '').trim();
+
+    document.getElementById('id_cuenta_pago').value = idCuenta;
+    document.getElementById('saldo-pendiente').textContent = saldo;
+    document.getElementById('monto_pago').max = parseFloat(saldo);
+
+    // Limpiar campo de monto (para que usuario decida si pago parcial o completo)
+    document.getElementById('monto_pago').value = '';
+
+    document.getElementById('info-cuenta-pago').innerHTML = `
+        <strong>Cuenta:</strong> ${codigo}<br>
+        <strong>Cliente:</strong> ${cliente}<br>
+        <strong>Saldo Pendiente:</strong> S/ ${saldo}
+    `;
+
+    // Abrir modal
+    const modal = new bootstrap.Modal(document.getElementById('modalRegistrarPago'));
+    modal.show();
+}
+
+// Pagar saldo completo
+function pagarSaldoCompleto() {
+    const saldo = document.getElementById('saldo-pendiente').textContent;
+    document.getElementById('monto_pago').value = parseFloat(saldo).toFixed(2);
+}
+
+// Convertir venta pendiente a cuenta por cobrar
+function convertirACuenta(idVenta, codigoVenta, monto) {
+    if (!confirm(`¿Convertir venta ${codigoVenta} en cuenta por cobrar formal?\n\nEsto permitirá un mejor seguimiento con fecha de vencimiento.`)) {
+        return;
+    }
+
+    // Pre-llenar el modal de nueva cuenta
+    const modal = new bootstrap.Modal(document.getElementById('modalNuevaCuenta'));
+
+    // Llenar campos
+    document.getElementById('id_venta').value = idVenta;
+    document.getElementById('concepto').value = `Venta ${codigoVenta}`;
+    document.getElementById('monto_total').value = monto;
+
+    // Fechas
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('fecha_emision').value = today;
+
+    const vencimiento = new Date();
+    vencimiento.setDate(vencimiento.getDate() + 30);
+    document.getElementById('fecha_vencimiento').value = vencimiento.toISOString().split('T')[0];
+
+    modal.show();
+}
+
+// Guardar pago
+function guardarPago() {
+    const form = document.getElementById('formRegistrarPago');
+
+    if (!form.checkValidity()) {
+        form.reportValidity();
+        return;
+    }
+
+    const data = {
+        id_cuenta: parseInt(document.getElementById('id_cuenta_pago').value),
+        monto_pago: parseFloat(document.getElementById('monto_pago').value),
+        fecha_pago: document.getElementById('fecha_pago').value,
+        metodo_pago: document.getElementById('metodo_pago').value,
+        numero_comprobante: document.getElementById('numero_comprobante').value,
+        observaciones: document.getElementById('observaciones_pago').value
+    };
+
+    fetch('/api/pagos/registrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✓ Pago registrado exitosamente\nCódigo: ' + data.codigo_pago);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error al registrar pago: ' + error);
+    });
+}
+</script>
+
+{% endblock %}

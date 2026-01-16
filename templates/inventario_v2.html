@@ -13,36 +13,62 @@
         {% if ubicaciones_dict.update({item.ubicacion_nombre: ubicaciones_dict.get(item.ubicacion_nombre, 0) + item.cantidad_pares}) %}{% endif %}
     {% endfor %}
 
-    {% for ubicacion, total in ubicaciones_dict.items() %}
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-body">
-                <h6 class="text-muted">{{ ubicacion }}</h6>
-                <h3 class="mb-0">{{ total }} <small class="text-muted">pares</small></h3>
+    {% for ubicacion_obj in ubicaciones %}
+        {% set total_stock = ubicaciones_dict.get(ubicacion_obj.nombre, 0) %}
+        <div class="col-md-4">
+            <div class="card {% if total_stock == 0 %}border-danger{% endif %}">
+                <div class="card-body">
+                    <h6 class="text-muted">{{ ubicacion_obj.nombre }}</h6>
+                    <h3 class="mb-0 {% if total_stock == 0 %}text-danger{% else %}text-success{% endif %}">
+                        {{ total_stock }} <small class="text-muted">pares</small>
+                    </h3>
+                    {% if total_stock == 0 %}
+                        <small class="text-danger">Sin stock</small>
+                    {% endif %}
+                </div>
             </div>
         </div>
-    </div>
     {% endfor %}
 </div>
 
 <!-- Filtros -->
 <div class="card mb-3">
     <div class="card-body">
-        <div class="btn-group me-3" role="group">
-            <button type="button" class="btn btn-outline-success active" onclick="filtrarStock('todos')">
-                📦 Todos
-            </button>
-            <button type="button" class="btn btn-outline-success" onclick="filtrarStock('con-stock')">
-                ✓ Con Stock
-            </button>
-            <button type="button" class="btn btn-outline-danger" onclick="filtrarStock('sin-stock')">
-                ⚠️ Sin Stock (0 pares)
-            </button>
-            <button type="button" class="btn btn-outline-warning" onclick="filtrarStock('stock-bajo')">
-                ⚡ Stock Bajo (< 6 pares)
-            </button>
+        <div class="mb-3">
+            <label class="form-label fw-bold">Filtrar por Stock:</label>
+            <div class="btn-group me-3" role="group" id="filtros-stock">
+                <button type="button" class="btn btn-outline-success active" onclick="filtrarStock('todos')">
+                    📦 Todos
+                </button>
+                <button type="button" class="btn btn-outline-success" onclick="filtrarStock('con-stock')">
+                    ✓ Con Stock
+                </button>
+                <button type="button" class="btn btn-outline-danger" onclick="filtrarStock('sin-stock')">
+                    ⚠️ Sin Stock (0 pares)
+                </button>
+                <button type="button" class="btn btn-outline-warning" onclick="filtrarStock('stock-bajo')">
+                    ⚡ Stock Bajo (< 6 pares)
+                </button>
+            </div>
         </div>
-        <span id="resultado-filtro">Mostrando todos los productos</span>
+
+        <div class="mb-2">
+            <label class="form-label fw-bold">Filtrar por Ubicación:</label>
+            <div class="btn-group" role="group" id="filtros-ubicacion">
+                <button type="button" class="btn btn-outline-secondary active" onclick="filtrarUbicacion('todas')">
+                    🏢 Todas
+                </button>
+                {% for ubicacion_obj in ubicaciones %}
+                <button type="button" class="btn btn-outline-secondary" onclick="filtrarUbicacion('{{ ubicacion_obj.nombre }}')">
+                    📍 {{ ubicacion_obj.nombre }}
+                </button>
+                {% endfor %}
+            </div>
+        </div>
+
+        <div class="text-muted">
+            <span id="resultado-filtro">Mostrando todos los productos en todas las ubicaciones</span>
+        </div>
     </div>
 </div>
 
@@ -70,7 +96,7 @@
                 </thead>
                 <tbody>
                     {% for item in items %}
-                    <tr data-cantidad="{{ item.cantidad_pares }}" class="{% if item.cantidad_pares == 0 %}table-secondary{% elif item.cantidad_pares < 6 %}table-warning{% endif %}">
+                    <tr data-cantidad="{{ item.cantidad_pares }}" data-ubicacion="{{ item.ubicacion_nombre }}" class="{% if item.cantidad_pares == 0 %}table-secondary{% elif item.cantidad_pares < 6 %}table-warning{% endif %}">
                         <td class="text-center">
                             {% if item.cantidad_pares == 0 %}
                                 <span class="badge bg-danger" title="Sin stock">❌</span>
@@ -118,29 +144,35 @@
 </div>
 
 <script>
-function filtrarStock(tipo) {
+// Variables globales para mantener el estado de los filtros
+let filtroStockActual = 'todos';
+let filtroUbicacionActual = 'todas';
+
+function aplicarFiltros() {
     const filas = document.querySelectorAll('#tabla-inventario tbody tr');
     let contador = 0;
 
-    // Actualizar botones activos
-    document.querySelectorAll('.btn-group .btn').forEach(btn => btn.classList.remove('active'));
-    event.target.classList.add('active');
-
     filas.forEach(row => {
         const cantidad = parseInt(row.dataset.cantidad);
-        let mostrar = false;
+        const ubicacion = row.dataset.ubicacion;
 
-        if (tipo === 'todos') {
-            mostrar = true;
-        } else if (tipo === 'con-stock') {
-            mostrar = cantidad > 0;
-        } else if (tipo === 'sin-stock') {
-            mostrar = cantidad === 0;
-        } else if (tipo === 'stock-bajo') {
-            mostrar = cantidad > 0 && cantidad < 6;
+        // Evaluar filtro de stock
+        let cumpleStock = false;
+        if (filtroStockActual === 'todos') {
+            cumpleStock = true;
+        } else if (filtroStockActual === 'con-stock') {
+            cumpleStock = cantidad > 0;
+        } else if (filtroStockActual === 'sin-stock') {
+            cumpleStock = cantidad === 0;
+        } else if (filtroStockActual === 'stock-bajo') {
+            cumpleStock = cantidad > 0 && cantidad < 6;
         }
 
-        if (mostrar) {
+        // Evaluar filtro de ubicación
+        let cumpleUbicacion = filtroUbicacionActual === 'todas' || ubicacion === filtroUbicacionActual;
+
+        // Mostrar solo si cumple ambos filtros
+        if (cumpleStock && cumpleUbicacion) {
             row.style.display = '';
             contador++;
         } else {
@@ -148,17 +180,48 @@ function filtrarStock(tipo) {
         }
     });
 
-    // Actualizar contador y mensaje
-    const total = filas.length;
+    // Actualizar contador
     document.getElementById('contador-visible').textContent = contador;
 
-    const mensajes = {
-        'todos': 'Mostrando todos los productos',
-        'con-stock': 'Mostrando productos con stock disponible',
-        'sin-stock': 'Mostrando productos sin stock (agotados)',
-        'stock-bajo': 'Mostrando productos con stock bajo (< 6 pares)'
+    // Actualizar mensaje
+    actualizarMensajeFiltro();
+}
+
+function filtrarStock(tipo) {
+    filtroStockActual = tipo;
+
+    // Actualizar botones activos
+    document.querySelectorAll('#filtros-stock .btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    aplicarFiltros();
+}
+
+function filtrarUbicacion(ubicacion) {
+    filtroUbicacionActual = ubicacion;
+
+    // Actualizar botones activos
+    document.querySelectorAll('#filtros-ubicacion .btn').forEach(btn => btn.classList.remove('active'));
+    event.target.classList.add('active');
+
+    aplicarFiltros();
+}
+
+function actualizarMensajeFiltro() {
+    const mensajesStock = {
+        'todos': 'todos los productos',
+        'con-stock': 'productos con stock disponible',
+        'sin-stock': 'productos sin stock (agotados)',
+        'stock-bajo': 'productos con stock bajo (< 6 pares)'
     };
-    document.getElementById('resultado-filtro').textContent = mensajes[tipo];
+
+    const mensajeStock = mensajesStock[filtroStockActual];
+    const mensajeUbicacion = filtroUbicacionActual === 'todas'
+        ? 'en todas las ubicaciones'
+        : 'en ' + filtroUbicacionActual;
+
+    document.getElementById('resultado-filtro').textContent =
+        'Mostrando ' + mensajeStock + ' ' + mensajeUbicacion;
 }
 </script>
 

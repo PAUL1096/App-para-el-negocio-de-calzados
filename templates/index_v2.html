@@ -3,111 +3,295 @@
 {% block content %}
 <div class="page-header">
     <h1><i class="bi bi-speedometer2"></i> Dashboard v2.0</h1>
-    <p class="text-muted">Sistema de Gestión de Calzado - Modelo Correcto</p>
+    <p class="text-muted">Sistema de Gestión de Calzado - Métricas y Flujo Operativo</p>
 </div>
 
-<!-- Estadísticas -->
-<div class="row g-4 mb-4">
-    <div class="col-md-3">
-        <div class="card text-white bg-primary">
+<!-- ========== MÉTRICAS DE NEGOCIO ========== -->
+<h4 class="mb-3"><i class="bi bi-graph-up"></i> Métricas de Negocio</h4>
+
+<!-- Primera fila: Ventas y Cobranzas -->
+<div class="row g-3 mb-3">
+    <div class="col-md-4">
+        <div class="card border-warning">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-box"></i> Variantes Base</h5>
-                <h2 class="display-4">{{ stats.variantes }}</h2>
-                <p class="card-text">Modelos en catálogo</p>
-                <a href="/catalogo-variantes" class="btn btn-light btn-sm">Ver Catálogo</a>
+                <h6 class="card-title text-warning"><i class="bi bi-calendar-day"></i> Ventas Hoy</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-0">{{ stats.ventas_hoy.cantidad }}</h2>
+                        <small class="text-muted">ventas</small>
+                    </div>
+                    <div class="text-end">
+                        <h4 class="mb-0 text-success">S/ {{ "%.2f"|format(stats.ventas_hoy.monto) }}</h4>
+                        <small class="text-muted">ingresos</small>
+                    </div>
+                </div>
+                <a href="/ventas" class="btn btn-outline-warning btn-sm mt-2 w-100">
+                    <i class="bi bi-cart-check"></i> Ver Ventas
+                </a>
             </div>
         </div>
     </div>
 
-    <div class="col-md-3">
-        <div class="card text-white bg-success">
+    <div class="col-md-4">
+        <div class="card border-success">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-hammer"></i> Productos</h5>
-                <h2 class="display-4">{{ stats.productos }}</h2>
-                <p class="card-text">Productos producidos</p>
-                <a href="/produccion" class="btn btn-light btn-sm">Ver Producción</a>
+                <h6 class="card-title text-success"><i class="bi bi-calendar-month"></i> Ventas del Mes</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-0">{{ stats.ventas_mes.cantidad }}</h2>
+                        <small class="text-muted">ventas</small>
+                    </div>
+                    <div class="text-end">
+                        <h4 class="mb-0 text-success">S/ {{ "%.2f"|format(stats.ventas_mes.monto) }}</h4>
+                        <small class="text-muted">ingresos</small>
+                    </div>
+                </div>
+                <a href="/ventas" class="btn btn-outline-success btn-sm mt-2 w-100">
+                    <i class="bi bi-bar-chart-line"></i> Ver Todas
+                </a>
             </div>
         </div>
     </div>
 
-    <div class="col-md-3">
-        <div class="card text-white bg-info">
+    <div class="col-md-4">
+        <div class="card border-danger">
             <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-boxes"></i> Stock Total</h5>
-                <h2 class="display-4">{{ stats.stock }}</h2>
-                <p class="card-text">Pares en inventario</p>
-                <a href="/inventario" class="btn btn-light btn-sm">Ver Inventario</a>
-            </div>
-        </div>
-    </div>
-
-    <div class="col-md-3">
-        <div class="card text-white bg-warning">
-            <div class="card-body">
-                <h5 class="card-title"><i class="bi bi-cart-check"></i> Ventas Hoy</h5>
-                <h2 class="display-4">{{ stats.ventas_hoy }}</h2>
-                <p class="card-text">Ventas registradas</p>
-                <a href="/ventas" class="btn btn-light btn-sm">Ver Ventas</a>
+                <h6 class="card-title text-danger"><i class="bi bi-cash-stack"></i> Cuentas por Cobrar</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-0">{{ stats.cuentas_por_cobrar.cantidad }}</h2>
+                        <small class="text-muted">pendientes</small>
+                    </div>
+                    <div class="text-end">
+                        <h4 class="mb-0 text-danger">S/ {{ "%.2f"|format(stats.cuentas_por_cobrar.monto) }}</h4>
+                        <small class="text-muted">por cobrar</small>
+                    </div>
+                </div>
+                <a href="/cuentas-por-cobrar" class="btn btn-outline-danger btn-sm mt-2 w-100">
+                    <i class="bi bi-file-earmark-text"></i> Gestionar
+                </a>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Flujo del Sistema -->
-<div class="card">
-    <div class="card-header">
-        <h5><i class="bi bi-diagram-3"></i> Flujo del Sistema v2.0</h5>
+<!-- Segunda fila: Operaciones -->
+<div class="row g-3 mb-4">
+    <div class="col-md-4">
+        <div class="card border-info">
+            <div class="card-body">
+                <h6 class="card-title text-info"><i class="bi bi-boxes"></i> Stock Total</h6>
+                <h2 class="mb-2">{{ stats.stock }}</h2>
+                <p class="text-muted mb-2">pares en inventario</p>
+                <a href="/inventario" class="btn btn-outline-info btn-sm w-100">
+                    <i class="bi bi-box-seam"></i> Ver Inventario
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-primary">
+            <div class="card-body">
+                <h6 class="card-title text-primary"><i class="bi bi-box-arrow-in-down"></i> Productos sin Ingresar</h6>
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h2 class="mb-0">{{ stats.pendientes_ingreso.cantidad }}</h2>
+                        <small class="text-muted">productos</small>
+                    </div>
+                    <div class="text-end">
+                        <h4 class="mb-0 text-warning">{{ stats.pendientes_ingreso.pares }}</h4>
+                        <small class="text-muted">pares pendientes</small>
+                    </div>
+                </div>
+                <a href="/produccion" class="btn btn-outline-primary btn-sm mt-2 w-100">
+                    <i class="bi bi-hammer"></i> Ver Producción
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card border-secondary">
+            <div class="card-body">
+                <h6 class="card-title text-secondary"><i class="bi bi-clipboard-check"></i> Preparaciones Activas</h6>
+                <h2 class="mb-2">{{ stats.preparaciones_activas }}</h2>
+                <p class="text-muted mb-2">mercaderías preparadas</p>
+                <a href="/preparaciones" class="btn btn-outline-secondary btn-sm w-100">
+                    <i class="bi bi-list-check"></i> Ver Preparaciones
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ========== FLUJO COMPLETO DEL SISTEMA ========== -->
+<div class="card mb-4">
+    <div class="card-header bg-primary text-white">
+        <h5 class="mb-0"><i class="bi bi-diagram-3"></i> Flujo Completo del Sistema</h5>
     </div>
     <div class="card-body">
-        <div class="row text-center">
-            <div class="col-md-2">
-                <div class="p-3 border rounded bg-light">
-                    <i class="bi bi-box display-4 text-primary"></i>
-                    <h6 class="mt-2">1. Catálogo</h6>
-                    <small class="text-muted">Variantes Base</small>
-                </div>
-            </div>
-            <div class="col-md-1 d-flex align-items-center justify-content-center">
-                <i class="bi bi-arrow-right display-6 text-muted"></i>
-            </div>
-            <div class="col-md-2">
-                <div class="p-3 border rounded bg-light">
-                    <i class="bi bi-hammer display-4 text-success"></i>
-                    <h6 class="mt-2">2. Producción</h6>
-                    <small class="text-muted">Productos Concretos</small>
-                </div>
-            </div>
-            <div class="col-md-1 d-flex align-items-center justify-content-center">
-                <i class="bi bi-arrow-right display-6 text-muted"></i>
-            </div>
-            <div class="col-md-2">
-                <div class="p-3 border rounded bg-light">
-                    <i class="bi bi-boxes display-4 text-info"></i>
-                    <h6 class="mt-2">3. Inventario</h6>
-                    <small class="text-muted">Stock en Ubicaciones</small>
+        <!-- Sección 1: Catálogo y Producción -->
+        <h6 class="text-primary mb-3"><i class="bi bi-1-circle-fill"></i> Gestión de Productos</h6>
+        <div class="row text-center mb-4">
+            <div class="col-md-3">
+                <div class="p-3 border rounded bg-light shadow-sm">
+                    <i class="bi bi-box display-5 text-primary"></i>
+                    <h6 class="mt-2 mb-1">Catálogo</h6>
+                    <small class="text-muted d-block mb-2">Variantes Base</small>
+                    <span class="badge bg-primary">{{ stats.variantes }} modelos</span>
+                    <a href="/catalogo-variantes" class="btn btn-sm btn-outline-primary mt-2 w-100">Gestionar</a>
                 </div>
             </div>
             <div class="col-md-1 d-flex align-items-center justify-content-center">
                 <i class="bi bi-arrow-right display-6 text-muted"></i>
             </div>
             <div class="col-md-3">
-                <div class="p-3 border rounded bg-light">
-                    <i class="bi bi-cart-check display-4 text-warning"></i>
-                    <h6 class="mt-2">4. Prep. → Ventas</h6>
-                    <small class="text-muted">Sistema Actual</small>
+                <div class="p-3 border rounded bg-light shadow-sm">
+                    <i class="bi bi-hammer display-5 text-success"></i>
+                    <h6 class="mt-2 mb-1">Producción</h6>
+                    <small class="text-muted d-block mb-2">Fabricar Productos</small>
+                    <span class="badge bg-success">{{ stats.productos }} productos</span>
+                    <a href="/produccion" class="btn btn-sm btn-outline-success mt-2 w-100">Ver</a>
+                </div>
+            </div>
+            <div class="col-md-1 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-right display-6 text-muted"></i>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 border rounded bg-light shadow-sm">
+                    <i class="bi bi-box-arrow-in-down display-5 text-primary"></i>
+                    <h6 class="mt-2 mb-1">Ingreso a Inventario</h6>
+                    <small class="text-muted d-block mb-2">Ingreso Total o Parcial</small>
+                    {% if stats.pendientes_ingreso.pares > 0 %}
+                        <span class="badge bg-warning">{{ stats.pendientes_ingreso.pares }} pares pendientes</span>
+                    {% else %}
+                        <span class="badge bg-success">Todo ingresado</span>
+                    {% endif %}
+                    <a href="/produccion" class="btn btn-sm btn-outline-primary mt-2 w-100">Ingresar</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-4">
+            <i class="bi bi-arrow-down display-6 text-muted"></i>
+        </div>
+
+        <!-- Sección 2: Inventario y Distribución -->
+        <h6 class="text-info mb-3"><i class="bi bi-2-circle-fill"></i> Inventario y Distribución</h6>
+        <div class="row text-center mb-4">
+            <div class="col-md-4">
+                <div class="p-3 border rounded bg-light shadow-sm">
+                    <i class="bi bi-boxes display-5 text-info"></i>
+                    <h6 class="mt-2 mb-1">Stock en Ubicaciones</h6>
+                    <small class="text-muted d-block mb-2">Inventario Físico</small>
+                    <span class="badge bg-info">{{ stats.stock }} pares</span>
+                    <a href="/inventario" class="btn btn-sm btn-outline-info mt-2 w-100">Ver Stock</a>
+                </div>
+            </div>
+            <div class="col-md-1 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-left-right display-6 text-muted"></i>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3 border rounded bg-light shadow-sm">
+                    <i class="bi bi-arrow-left-right display-5 text-secondary"></i>
+                    <h6 class="mt-2 mb-1">Traslados</h6>
+                    <small class="text-muted d-block mb-2">Mover entre Ubicaciones</small>
+                    <span class="badge bg-secondary">Operación</span>
+                    <a href="/ubicaciones" class="btn btn-sm btn-outline-secondary mt-2 w-100">Ubicaciones</a>
+                </div>
+            </div>
+            <div class="col-md-1 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-right display-6 text-muted"></i>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3 border rounded bg-light shadow-sm">
+                    <i class="bi bi-clipboard-check display-5 text-dark"></i>
+                    <h6 class="mt-2 mb-1">Preparaciones</h6>
+                    <small class="text-muted d-block mb-2">Preparar Mercadería</small>
+                    <span class="badge bg-dark">{{ stats.preparaciones_activas }} activas</span>
+                    <a href="/preparaciones" class="btn btn-sm btn-outline-dark mt-2 w-100">Gestionar</a>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mb-4">
+            <i class="bi bi-arrow-down display-6 text-muted"></i>
+        </div>
+
+        <!-- Sección 3: Ventas y Cobranzas -->
+        <h6 class="text-warning mb-3"><i class="bi bi-3-circle-fill"></i> Ventas y Cobranzas</h6>
+        <div class="row text-center">
+            <div class="col-md-3">
+                <div class="p-3 border rounded bg-light shadow-sm">
+                    <i class="bi bi-cart-check display-5 text-warning"></i>
+                    <h6 class="mt-2 mb-1">Ventas</h6>
+                    <small class="text-muted d-block mb-2">Multiproducto + Crédito</small>
+                    <span class="badge bg-warning">{{ stats.ventas_hoy.cantidad }} hoy</span>
+                    <a href="/ventas/nueva-directa" class="btn btn-sm btn-outline-warning mt-2 w-100">Nueva Venta</a>
+                </div>
+            </div>
+            <div class="col-md-1 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-right display-6 text-muted"></i>
+            </div>
+            <div class="col-md-4">
+                <div class="p-3 border rounded bg-light shadow-sm">
+                    <i class="bi bi-file-earmark-text display-5 text-danger"></i>
+                    <h6 class="mt-2 mb-1">Cuentas por Cobrar</h6>
+                    <small class="text-muted d-block mb-2">Ventas a Crédito</small>
+                    <span class="badge bg-danger">S/ {{ "%.2f"|format(stats.cuentas_por_cobrar.monto) }}</span>
+                    <a href="/cuentas-por-cobrar" class="btn btn-sm btn-outline-danger mt-2 w-100">Gestionar</a>
+                </div>
+            </div>
+            <div class="col-md-1 d-flex align-items-center justify-content-center">
+                <i class="bi bi-arrow-right display-6 text-muted"></i>
+            </div>
+            <div class="col-md-3">
+                <div class="p-3 border rounded bg-light shadow-sm">
+                    <i class="bi bi-cash-coin display-5 text-success"></i>
+                    <h6 class="mt-2 mb-1">Pagos</h6>
+                    <small class="text-muted d-block mb-2">Registro de Cobros</small>
+                    <span class="badge bg-success">Parcial/Total</span>
+                    <a href="/cuentas-por-cobrar" class="btn btn-sm btn-outline-success mt-2 w-100">Registrar</a>
                 </div>
             </div>
         </div>
     </div>
 </div>
 
-<!-- Información del modelo -->
-<div class="alert alert-info mt-4">
-    <h5><i class="bi bi-info-circle"></i> Nuevo Modelo de Datos</h5>
-    <p><strong>Variante Base:</strong> Modelo/Plantilla (Código, Tipo, Horma, Segmento)</p>
-    <p><strong>Producto:</strong> Materialización (Variante + Cuero + Color + Suela + Forro)</p>
-    <p><strong>Inventario:</strong> Stock físico de productos en ubicaciones</p>
-    <p class="mb-0"><strong>Preparaciones y Ventas:</strong> Funcionan con productos (ya no con variantes)</p>
+<!-- ========== INFORMACIÓN DEL SISTEMA ========== -->
+<div class="row g-3">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-info-circle"></i> Modelo de Datos</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-box text-primary"></i> <strong>Variante Base:</strong> Modelo/Plantilla del calzado</li>
+                    <li class="mb-2"><i class="bi bi-hammer text-success"></i> <strong>Producto:</strong> Materialización con cuero, color, suela, forro, plantilla</li>
+                    <li class="mb-2"><i class="bi bi-boxes text-info"></i> <strong>Inventario:</strong> Stock físico en ubicaciones</li>
+                    <li class="mb-0"><i class="bi bi-cart-check text-warning"></i> <strong>Ventas:</strong> Multiproducto con pago contado/crédito</li>
+                </ul>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="bi bi-star"></i> Funcionalidades Destacadas</h6>
+            </div>
+            <div class="card-body">
+                <ul class="list-unstyled mb-0">
+                    <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Ingreso parcial de inventario</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Ventas multiproducto con carrito</li>
+                    <li class="mb-2"><i class="bi bi-check-circle text-success"></i> Ventas sin cliente (Cliente Desconocido)</li>
+                    <li class="mb-0"><i class="bi bi-check-circle text-success"></i> Registro de pagos con fecha personalizada</li>
+                </ul>
+            </div>
+        </div>
+    </div>
 </div>
 
 {% endblock %}

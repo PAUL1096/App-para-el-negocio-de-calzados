@@ -13,7 +13,7 @@
     <div class="card-body">
         <form id="formPreparacion">
             <div class="row mb-3">
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="id_ubicacion_origen" class="form-label">Ubicación Origen *</label>
                     <select class="form-select" id="id_ubicacion_origen" name="id_ubicacion_origen" required>
                         <option value="">-- Seleccionar --</option>
@@ -21,8 +21,19 @@
                         <option value="{{ ubic.id_ubicacion }}">{{ ubic.nombre }}</option>
                         {% endfor %}
                     </select>
+                    <small class="text-muted">De dónde sale la mercadería</small>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
+                    <label for="id_ubicacion_destino" class="form-label">Ubicación Destino *</label>
+                    <select class="form-select" id="id_ubicacion_destino" name="id_ubicacion_destino" required>
+                        <option value="">-- Seleccionar --</option>
+                        {% for ubic in ubicaciones %}
+                        <option value="{{ ubic.id_ubicacion }}">{{ ubic.nombre }}</option>
+                        {% endfor %}
+                    </select>
+                    <small class="text-muted">A dónde va la mercadería</small>
+                </div>
+                <div class="col-md-3">
                     <label for="dia_venta" class="form-label">Día de Venta *</label>
                     <select class="form-select" id="dia_venta" name="dia_venta" required>
                         <option value="">-- Seleccionar --</option>
@@ -31,7 +42,7 @@
                         {% endfor %}
                     </select>
                 </div>
-                <div class="col-md-4">
+                <div class="col-md-3">
                     <label for="fecha_preparacion" class="form-label">Fecha Preparación</label>
                     <input type="date" class="form-control" id="fecha_preparacion" name="fecha_preparacion"
                            value="{{ today }}">
@@ -193,11 +204,17 @@ document.addEventListener('DOMContentLoaded', function() {
     // Guardar preparación
     document.getElementById('btnGuardarPreparacion').addEventListener('click', function() {
         // Validar datos básicos
-        const ubicacion = document.getElementById('id_ubicacion_origen').value;
+        const ubicacionOrigen = document.getElementById('id_ubicacion_origen').value;
+        const ubicacionDestino = document.getElementById('id_ubicacion_destino').value;
         const diaVenta = document.getElementById('dia_venta').value;
 
-        if (!ubicacion || !diaVenta) {
-            alert('Por favor completa los campos obligatorios (Ubicación y Día de Venta)');
+        if (!ubicacionOrigen || !ubicacionDestino || !diaVenta) {
+            alert('Por favor completa los campos obligatorios (Ubicación Origen, Destino y Día de Venta)');
+            return;
+        }
+
+        if (ubicacionOrigen === ubicacionDestino) {
+            alert('La ubicación origen y destino no pueden ser la misma');
             return;
         }
 
@@ -226,7 +243,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
         // Preparar datos para enviar
         const data = {
-            id_ubicacion_origen: parseInt(ubicacion),
+            id_ubicacion_origen: parseInt(ubicacionOrigen),
+            id_ubicacion_destino: parseInt(ubicacionDestino),
             dia_venta: diaVenta,
             fecha_preparacion: document.getElementById('fecha_preparacion').value,
             observaciones: document.getElementById('observaciones').value,

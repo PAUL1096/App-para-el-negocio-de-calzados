@@ -1,0 +1,297 @@
+{% extends "base.html" %}
+{% block title %}Detalle de Venta - Sistema Calzado{% endblock %}
+{% block content %}
+
+<div class="page-header d-flex justify-content-between align-items-center">
+    <div>
+        <h1><i class="bi bi-receipt"></i> Detalle de Venta: {{ venta.codigo_venta }}</h1>
+        <p class="text-muted">
+            Fecha: {{ venta.fecha_venta }} {{ venta.hora_venta }}
+            {% if cuenta %}
+                | Cuenta: {{ cuenta.codigo_cuenta }}
+            {% endif %}
+        </p>
+    </div>
+    <div>
+        <a href="/ventas" class="btn btn-outline-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a Ventas
+        </a>
+        {% if cuenta %}
+        <a href="/cuentas-por-cobrar" class="btn btn-outline-warning">
+            <i class="bi bi-cash-coin"></i> Ir a Cuentas por Cobrar
+        </a>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Estado de Pago -->
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-info-circle"></i> Información General</h5>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <p><strong>Código:</strong> {{ venta.codigo_venta }}</p>
+                        <p><strong>Cliente:</strong> {{ venta.cliente }}</p>
+                        <p><strong>Fecha:</strong> {{ venta.fecha_venta }} {{ venta.hora_venta }}</p>
+                        <p><strong>Método de Pago:</strong> {{ venta.metodo_pago or 'No especificado' }}</p>
+                    </div>
+                    <div class="col-md-6">
+                        <p><strong>Estado de Pago:</strong>
+                            {% if venta.estado_pago == 'pagado' %}
+                                <span class="badge bg-success">Pagado</span>
+                            {% elif venta.estado_pago == 'credito' %}
+                                <span class="badge bg-warning">A Crédito</span>
+                            {% elif venta.estado_pago == 'parcial' %}
+                                <span class="badge bg-info">Pago Parcial</span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ venta.estado_pago }}</span>
+                            {% endif %}
+                        </p>
+                        {% if cuenta %}
+                        <p><strong>Cuenta por Cobrar:</strong> {{ cuenta.codigo_cuenta }}</p>
+                        <p><strong>Saldo Pendiente:</strong> <span class="text-danger"><strong>S/ {{ "%.2f"|format(cuenta.saldo_pendiente) }}</strong></span></p>
+                        <p><strong>Fecha Vencimiento:</strong> {{ cuenta.fecha_vencimiento }}</p>
+                        {% endif %}
+                        <p><strong>Total:</strong> <span class="text-success"><strong>S/ {{ "%.2f"|format(venta.total_final) }}</strong></span></p>
+                    </div>
+                </div>
+                {% if venta.observaciones %}
+                <hr>
+                <p><strong>Observaciones:</strong><br>{{ venta.observaciones }}</p>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <!-- Acciones Rápidas -->
+        <div class="card">
+            <div class="card-header bg-info text-white">
+                <h5 class="mb-0"><i class="bi bi-lightning"></i> Acciones Rápidas</h5>
+            </div>
+            <div class="card-body">
+                {% if venta.estado_pago in ['credito', 'parcial', 'pendiente'] and cuenta %}
+                <button class="btn btn-success w-100 mb-2" onclick="mostrarModalPago()">
+                    <i class="bi bi-cash"></i> Registrar Pago
+                </button>
+                <button class="btn btn-primary w-100 mb-2" onclick="pagarSaldoCompleto()">
+                    <i class="bi bi-check-circle"></i> Pagar Saldo Completo
+                </button>
+                {% endif %}
+                <button class="btn btn-outline-secondary w-100" onclick="window.print()">
+                    <i class="bi bi-printer"></i> Imprimir
+                </button>
+            </div>
+        </div>
+
+        <!-- Resumen Financiero -->
+        {% if cuenta %}
+        <div class="card mt-3">
+            <div class="card-header bg-warning text-dark">
+                <h5 class="mb-0"><i class="bi bi-graph-up"></i> Resumen Financiero</h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-sm mb-0">
+                    <tr>
+                        <td>Total Venta:</td>
+                        <td class="text-end"><strong>S/ {{ "%.2f"|format(cuenta.monto_total) }}</strong></td>
+                    </tr>
+                    <tr>
+                        <td>Pagado:</td>
+                        <td class="text-end text-success"><strong>S/ {{ "%.2f"|format(cuenta.monto_total - cuenta.saldo_pendiente) }}</strong></td>
+                    </tr>
+                    <tr class="table-warning">
+                        <td><strong>Saldo:</strong></td>
+                        <td class="text-end text-danger"><strong>S/ {{ "%.2f"|format(cuenta.saldo_pendiente) }}</strong></td>
+                    </tr>
+                </table>
+                {% set porcentaje_pagado = ((cuenta.monto_total - cuenta.saldo_pendiente) / cuenta.monto_total * 100) if cuenta.monto_total > 0 else 0 %}
+                <div class="progress mt-2" style="height: 25px;">
+                    <div class="progress-bar bg-success" style="width: {{ porcentaje_pagado }}%">
+                        {{ "%.0f"|format(porcentaje_pagado) }}% pagado
+                    </div>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Productos de la Venta -->
+<div class="card mb-4">
+    <div class="card-header bg-secondary text-white">
+        <h5 class="mb-0"><i class="bi bi-box-seam"></i> Productos ({{ detalles|length }})</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Código</th>
+                        <th>Producto</th>
+                        <th>Tallas</th>
+                        <th class="text-center">Cantidad</th>
+                        <th class="text-end">Precio Unit.</th>
+                        <th class="text-end">Subtotal</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for detalle in detalles %}
+                    <tr>
+                        <td>{{ loop.index }}</td>
+                        <td><span class="badge bg-secondary">{{ detalle.codigo_interno }}</span></td>
+                        <td>
+                            {{ detalle.cuero }} {{ detalle.color_cuero }}
+                        </td>
+                        <td><small class="text-muted">{{ detalle.serie_tallas }}</small></td>
+                        <td class="text-center"><strong>{{ detalle.cantidad_pares }}</strong> pares</td>
+                        <td class="text-end">S/ {{ "%.2f"|format(detalle.precio_unitario) }}</td>
+                        <td class="text-end"><strong>S/ {{ "%.2f"|format(detalle.subtotal) }}</strong></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+                <tfoot class="table-light">
+                    <tr>
+                        <td colspan="6" class="text-end"><strong>Descuento Global:</strong></td>
+                        <td class="text-end text-danger">- S/ {{ "%.2f"|format(venta.descuento_global or 0) }}</td>
+                    </tr>
+                    <tr class="table-success">
+                        <td colspan="6" class="text-end"><strong>TOTAL:</strong></td>
+                        <td class="text-end"><strong>S/ {{ "%.2f"|format(venta.total_final) }}</strong></td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Historial de Pagos -->
+{% if pagos %}
+<div class="card mb-4">
+    <div class="card-header bg-success text-white">
+        <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial de Pagos ({{ pagos|length }})</h5>
+    </div>
+    <div class="card-body p-0">
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Fecha</th>
+                        <th>Monto</th>
+                        <th>Método</th>
+                        <th>Observaciones</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for pago in pagos %}
+                    <tr>
+                        <td>{{ pago.fecha_pago }}</td>
+                        <td><strong class="text-success">S/ {{ "%.2f"|format(pago.monto_pago) }}</strong></td>
+                        <td><span class="badge bg-info">{{ pago.metodo_pago }}</span></td>
+                        <td>{{ pago.observaciones or '-' }}</td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- Modal de Pago -->
+{% if cuenta and venta.estado_pago in ['credito', 'parcial', 'pendiente'] %}
+<div class="modal fade" id="modalPago" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title"><i class="bi bi-cash"></i> Registrar Pago</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formPago">
+                    <div class="mb-3">
+                        <label class="form-label">Monto a Pagar</label>
+                        <input type="number" class="form-control" id="monto_pago" name="monto_pago"
+                               step="0.01" min="0.01" max="{{ cuenta.saldo_pendiente }}"
+                               value="{{ cuenta.saldo_pendiente }}" required>
+                        <small class="text-muted">Saldo pendiente: S/ {{ "%.2f"|format(cuenta.saldo_pendiente) }}</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Método de Pago</label>
+                        <select class="form-select" id="metodo_pago" name="metodo_pago" required>
+                            <option value="efectivo">Efectivo</option>
+                            <option value="transferencia">Transferencia</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="yape">Yape/Plin</option>
+                        </select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Fecha de Pago *</label>
+                        <input type="date" class="form-control" id="fecha_pago" name="fecha_pago"
+                               value="{{ fecha_hoy }}" required>
+                        <small class="text-muted">Fecha en que se recibió el pago</small>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones" name="observaciones" rows="2"></textarea>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="registrarPago()">
+                    <i class="bi bi-save"></i> Registrar Pago
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<script>
+function mostrarModalPago() {
+    new bootstrap.Modal(document.getElementById('modalPago')).show();
+}
+
+function pagarSaldoCompleto() {
+    if (confirm('¿Confirmar pago del saldo completo de S/ {{ "%.2f"|format(cuenta.saldo_pendiente if cuenta else 0) }}?')) {
+        registrarPago(true);
+    }
+}
+
+function registrarPago(saldoCompleto = false) {
+    const formData = {
+        id_cuenta: {{ cuenta.id_cuenta if cuenta else 'null' }},
+        id_venta: {{ venta.id_venta }},
+        monto_pago: saldoCompleto ? {{ cuenta.saldo_pendiente if cuenta else 0 }} : parseFloat(document.getElementById('monto_pago').value),
+        metodo_pago: saldoCompleto ? 'efectivo' : document.getElementById('metodo_pago').value,
+        fecha_pago: saldoCompleto ? new Date().toISOString().split('T')[0] : document.getElementById('fecha_pago').value,
+        observaciones: saldoCompleto ? 'Pago de saldo completo' : document.getElementById('observaciones').value
+    };
+
+    fetch('/api/pagos/registrar', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert('✓ Pago registrado exitosamente');
+            location.reload();
+        } else {
+            alert('❌ Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('❌ Error al registrar pago: ' + error);
+    });
+}
+</script>
+
+{% endblock %}

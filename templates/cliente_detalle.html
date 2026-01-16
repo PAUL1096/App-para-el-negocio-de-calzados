@@ -1,0 +1,243 @@
+{% extends 'base.html' %}
+
+{% block title %}Detalle Cliente - {{ cliente.nombre }} {{ cliente.apellido or '' }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb">
+        <ol class="breadcrumb">
+            <li class="breadcrumb-item"><a href="/clientes">Clientes</a></li>
+            <li class="breadcrumb-item active">{{ cliente.nombre }} {{ cliente.apellido or '' }}</li>
+        </ol>
+    </nav>
+
+    <!-- Información del Cliente -->
+    <div class="card mb-4">
+        <div class="card-header bg-primary text-white">
+            <h5 class="mb-0"><i class="bi bi-person-badge"></i> Información del Cliente</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Nombre:</strong> {{ cliente.nombre }} {{ cliente.apellido or '' }}</p>
+                    {% if cliente.nombre_comercial %}
+                    <p><strong>Nombre Comercial:</strong> {{ cliente.nombre_comercial }}</p>
+                    {% endif %}
+                    <p><strong>{{ cliente.tipo_documento }}:</strong> {{ cliente.numero_documento or 'N/A' }}</p>
+                    <p><strong>Teléfono:</strong> {{ cliente.telefono or 'N/A' }}</p>
+                    <p><strong>Email:</strong> {{ cliente.email or 'N/A' }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Dirección:</strong> {{ cliente.direccion or 'N/A' }}</p>
+                    <p><strong>Límite de Crédito:</strong> S/ {{ "%.2f"|format(cliente.limite_credito or 0) }}</p>
+                    <p><strong>Días de Crédito:</strong> {{ cliente.dias_credito or 30 }} días</p>
+                    <p><strong>Fecha Registro:</strong> {{ cliente.fecha_registro }}</p>
+                    {% if cliente.observaciones %}
+                    <p><strong>Observaciones:</strong> {{ cliente.observaciones }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Estadísticas -->
+    <div class="row mb-4">
+        <div class="col-md-3">
+            <div class="card bg-info text-white">
+                <div class="card-body">
+                    <h6>Total Cuentas</h6>
+                    <h3>{{ stats.total_cuentas }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-warning text-dark">
+                <div class="card-body">
+                    <h6>Deuda Total</h6>
+                    <h3>S/ {{ "%.2f"|format(stats.deuda_total) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-danger text-white">
+                <div class="card-body">
+                    <h6>Deuda Vencida</h6>
+                    <h3>S/ {{ "%.2f"|format(stats.deuda_vencida) }}</h3>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card bg-secondary text-white">
+                <div class="card-body">
+                    <h6>Total Créditos</h6>
+                    <h3>S/ {{ "%.2f"|format(stats.monto_total_creditos) }}</h3>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Cuentas por Cobrar -->
+    <div class="card mb-4">
+        <div class="card-header bg-warning text-dark">
+            <h5 class="mb-0"><i class="bi bi-cash-stack"></i> Cuentas por Cobrar</h5>
+        </div>
+        <div class="card-body">
+            {% if cuentas %}
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Código</th>
+                            <th>Venta</th>
+                            <th>Concepto</th>
+                            <th>Fecha Emisión</th>
+                            <th>Vencimiento</th>
+                            <th>Monto Total</th>
+                            <th>Saldo</th>
+                            <th>Estado</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cuenta in cuentas %}
+                        <tr>
+                            <td><strong>{{ cuenta.codigo_cuenta }}</strong></td>
+                            <td>
+                                {% if cuenta.codigo_venta %}
+                                <a href="/ventas/detalle/{{ cuenta.id_venta }}">{{ cuenta.codigo_venta }}</a>
+                                {% else %}
+                                -
+                                {% endif %}
+                            </td>
+                            <td>{{ cuenta.concepto }}</td>
+                            <td>{{ cuenta.fecha_emision }}</td>
+                            <td>{{ cuenta.fecha_vencimiento }}</td>
+                            <td>S/ {{ "%.2f"|format(cuenta.monto_total) }}</td>
+                            <td><strong>S/ {{ "%.2f"|format(cuenta.saldo_pendiente) }}</strong></td>
+                            <td>
+                                {% if cuenta.estado == 'pagada' %}
+                                <span class="badge bg-success">Pagada</span>
+                                {% elif cuenta.estado == 'vencida' %}
+                                <span class="badge bg-danger">Vencida ({{ cuenta.dias_mora|int }} días)</span>
+                                {% else %}
+                                <span class="badge bg-info">Vigente</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="/cuentas-por-cobrar/detalle/{{ cuenta.id_cuenta }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> Ver
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <div class="alert alert-info">
+                <i class="bi bi-info-circle"></i> No hay cuentas por cobrar registradas para este cliente.
+            </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Historial de Pagos -->
+    {% if historial_pagos %}
+    <div class="card mb-4">
+        <div class="card-header bg-success text-white">
+            <h5 class="mb-0"><i class="bi bi-clock-history"></i> Historial de Pagos</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Fecha</th>
+                            <th>Cuenta</th>
+                            <th>Concepto</th>
+                            <th>Monto</th>
+                            <th>Método</th>
+                            <th>Observaciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for pago in historial_pagos %}
+                        <tr>
+                            <td>{{ pago.fecha_pago }}</td>
+                            <td><strong>{{ pago.codigo_cuenta }}</strong></td>
+                            <td>{{ pago.concepto }}</td>
+                            <td><strong class="text-success">S/ {{ "%.2f"|format(pago.monto_pago) }}</strong></td>
+                            <td>{{ pago.metodo_pago|capitalize }}</td>
+                            <td>{{ pago.observaciones or '-' }}</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Ventas del Cliente -->
+    {% if ventas %}
+    <div class="card mb-4">
+        <div class="card-header bg-secondary text-white">
+            <h5 class="mb-0"><i class="bi bi-cart-check"></i> Ventas Realizadas</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead class="table-light">
+                        <tr>
+                            <th>Código</th>
+                            <th>Fecha</th>
+                            <th>Productos</th>
+                            <th>Total</th>
+                            <th>Estado Pago</th>
+                            <th>Método</th>
+                            <th>Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for venta in ventas %}
+                        <tr>
+                            <td><strong>{{ venta.codigo_venta }}</strong></td>
+                            <td>{{ venta.fecha_venta }}</td>
+                            <td>{{ venta.num_productos }} producto(s)</td>
+                            <td><strong>S/ {{ "%.2f"|format(venta.total_final) }}</strong></td>
+                            <td>
+                                {% if venta.estado_pago == 'pagado' %}
+                                <span class="badge bg-success">Pagado</span>
+                                {% elif venta.estado_pago == 'parcial' %}
+                                <span class="badge bg-warning">Parcial</span>
+                                {% elif venta.estado_pago == 'credito' %}
+                                <span class="badge bg-info">A Crédito</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ venta.metodo_pago or '-' }}</td>
+                            <td>
+                                <a href="/ventas/detalle/{{ venta.id_venta }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-eye"></i> Ver
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- Botón Volver -->
+    <div class="mb-4">
+        <a href="/clientes" class="btn btn-secondary">
+            <i class="bi bi-arrow-left"></i> Volver a Clientes
+        </a>
+        <a href="/cuentas-por-cobrar" class="btn btn-outline-primary">
+            <i class="bi bi-cash-coin"></i> Ir a Cuentas por Cobrar
+        </a>
+    </div>
+</div>
+{% endblock %}

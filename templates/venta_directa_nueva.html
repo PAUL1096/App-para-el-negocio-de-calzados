@@ -1,0 +1,318 @@
+{% extends "base.html" %}
+{% block title %}Nueva Venta Directa - Sistema Calzado{% endblock %}
+{% block content %}
+<div class="page-header">
+    <h1><i class="bi bi-cart-plus"></i> Nueva Venta Directa</h1>
+    <p class="text-muted">Venta desde inventario (sin preparación)</p>
+</div>
+
+<div class="row">
+    <div class="col-md-8">
+        <div class="card mb-3">
+            <div class="card-header">
+                <h5 class="mb-0">1. Seleccionar Ubicación</h5>
+            </div>
+            <div class="card-body">
+                <select class="form-select form-select-lg" id="ubicacion" onchange="cargarInventario()">
+                    <option value="">-- Seleccionar Ubicación --</option>
+                    {% for ub in ubicaciones %}
+                    <option value="{{ ub.id_ubicacion }}">{{ ub.nombre }}</option>
+                    {% endfor %}
+                </select>
+            </div>
+        </div>
+
+        <div class="card mb-3" id="card-inventario" style="display: none;">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <h5 class="mb-0">2. Seleccionar Producto</h5>
+                <span id="total-items" class="badge bg-secondary">0 productos disponibles</span>
+            </div>
+            <div class="card-body p-0">
+                <div class="table-responsive" style="max-height: 400px;">
+                    <table class="table table-hover mb-0">
+                        <thead class="sticky-top bg-light">
+                            <tr>
+                                <th>Código</th>
+                                <th>Producto</th>
+                                <th>Stock</th>
+                                <th>Precio</th>
+                                <th>Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-inventario">
+                            <!-- Se carga dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-4">
+        <div class="card sticky-top" style="top: 20px;">
+            <div class="card-header bg-primary text-white">
+                <h5 class="mb-0"><i class="bi bi-receipt"></i> Detalle de Venta</h5>
+            </div>
+            <div class="card-body">
+                <form id="formVenta">
+                    <input type="hidden" id="id_inventario" name="id_inventario">
+                    <input type="hidden" id="id_producto" name="id_producto">
+                    <input type="hidden" id="pares_por_docena" value="12">
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Producto Seleccionado:</label>
+                        <div id="producto-seleccionado" class="text-muted small">
+                            Ninguno
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cliente <span class="text-danger">*</span></label>
+                        <select class="form-select" id="id_cliente" name="id_cliente" required onchange="seleccionarClienteVentaDirecta()">
+                            <option value="">-- Seleccionar Cliente --</option>
+                            {% for cliente in clientes %}
+                            <option value="{{ cliente.id_cliente }}"
+                                    data-nombre="{{ cliente.nombre }} {{ cliente.apellido or '' }}">
+                                {{ cliente.nombre }} {{ cliente.apellido or '' }}
+                                {% if cliente.nombre_comercial %}({{ cliente.nombre_comercial }}){% endif %}
+                            </option>
+                            {% endfor %}
+                        </select>
+                        <input type="hidden" id="cliente_nombre" name="cliente">
+                        <small class="text-muted">
+                            <a href="/clientes" target="_blank">+ Crear nuevo cliente</a>
+                        </small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Cantidad (pares)</label>
+                        <input type="number" class="form-control" id="cantidad_pares" name="cantidad_pares"
+                               min="1" value="0" required oninput="calcularTotal()">
+                        <small class="text-muted">Disponible: <span id="stock-disponible">0</span> pares</small>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Precio Unitario</label>
+                        <input type="number" class="form-control" id="precio_unitario" name="precio_unitario"
+                               step="0.01" min="0" value="0" required oninput="calcularTotal()">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Descuento (S/)</label>
+                        <input type="number" class="form-control" id="descuento" name="descuento"
+                               step="0.01" min="0" value="0" oninput="calcularTotal()">
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Estado de Pago</label>
+                        <select class="form-select" id="estado_pago" name="estado_pago">
+                            <option value="pagado">Pagado</option>
+                            <option value="pendiente">Pendiente</option>
+                            <option value="credito">A Crédito</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Método de Pago</label>
+                        <select class="form-select" id="metodo_pago" name="metodo_pago">
+                            <option value="efectivo">Efectivo</option>
+                            <option value="transferencia">Transferencia</option>
+                            <option value="tarjeta">Tarjeta</option>
+                            <option value="yape">Yape/Plin</option>
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label">Observaciones</label>
+                        <textarea class="form-control" id="observaciones" name="observaciones" rows="2"></textarea>
+                    </div>
+
+                    <hr>
+
+                    <div class="mb-3">
+                        <div class="d-flex justify-content-between">
+                            <span>Subtotal:</span>
+                            <strong id="subtotal">S/ 0.00</strong>
+                        </div>
+                        <div class="d-flex justify-content-between text-danger">
+                            <span>Descuento:</span>
+                            <strong id="descuento-texto">S/ 0.00</strong>
+                        </div>
+                        <hr>
+                        <div class="d-flex justify-content-between">
+                            <h5>Total:</h5>
+                            <h5 class="text-primary" id="total">S/ 0.00</h5>
+                        </div>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100" id="btnGuardar" disabled>
+                        <i class="bi bi-save"></i> Registrar Venta
+                    </button>
+                    <a href="/ventas" class="btn btn-outline-secondary w-100 mt-2">
+                        <i class="bi bi-arrow-left"></i> Cancelar
+                    </a>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+let inventarioActual = [];
+let productoSeleccionado = null;
+
+// Función para seleccionar cliente y guardar nombre
+function seleccionarClienteVentaDirecta() {
+    const select = document.getElementById('id_cliente');
+    const option = select.options[select.selectedIndex];
+
+    if (select.value) {
+        const nombreCompleto = option.dataset.nombre;
+        document.getElementById('cliente_nombre').value = nombreCompleto;
+    } else {
+        document.getElementById('cliente_nombre').value = '';
+    }
+}
+
+function cargarInventario() {
+    const ubicacionId = document.getElementById('ubicacion').value;
+
+    if (!ubicacionId) {
+        document.getElementById('card-inventario').style.display = 'none';
+        return;
+    }
+
+    fetch(`/api/inventario/por-ubicacion/${ubicacionId}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                inventarioActual = data.inventario;
+                mostrarInventario(data.inventario);
+                document.getElementById('card-inventario').style.display = 'block';
+            } else {
+                alert('Error: ' + data.error);
+            }
+        })
+        .catch(error => {
+            alert('Error al cargar inventario: ' + error);
+        });
+}
+
+function mostrarInventario(items) {
+    const tabla = document.getElementById('tabla-inventario');
+    const totalItems = document.getElementById('total-items');
+
+    if (items.length === 0) {
+        tabla.innerHTML = '<tr><td colspan="5" class="text-center text-muted">Sin stock disponible en esta ubicación</td></tr>';
+        totalItems.textContent = '0 productos disponibles';
+        return;
+    }
+
+    totalItems.textContent = `${items.length} producto(s) disponible(s)`;
+
+    tabla.innerHTML = items.map(item => `
+        <tr>
+            <td><strong>${item.codigo_interno}</strong></td>
+            <td>
+                <small>${item.tipo_calzado}</small><br>
+                ${item.cuero} ${item.color_cuero}<br>
+                <small class="text-muted">${item.serie_tallas}</small>
+            </td>
+            <td><strong class="text-success">${item.cantidad_pares}</strong> pares</td>
+            <td>S/ ${item.precio_sugerido.toFixed(2)}</td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick='seleccionarProducto(${JSON.stringify(item)})'>
+                    <i class="bi bi-check-circle"></i> Seleccionar
+                </button>
+            </td>
+        </tr>
+    `).join('');
+}
+
+function seleccionarProducto(item) {
+    productoSeleccionado = item;
+
+    document.getElementById('id_inventario').value = item.id_inventario;
+    document.getElementById('id_producto').value = item.id_producto;
+    document.getElementById('pares_por_docena').value = item.pares_por_docena;
+    document.getElementById('precio_unitario').value = item.precio_sugerido;
+    document.getElementById('stock-disponible').textContent = item.cantidad_pares;
+    document.getElementById('cantidad_pares').max = item.cantidad_pares;
+
+    document.getElementById('producto-seleccionado').innerHTML = `
+        <strong>${item.codigo_interno}</strong> - ${item.cuero} ${item.color_cuero}<br>
+        <small>${item.serie_tallas}</small>
+    `;
+
+    document.getElementById('btnGuardar').disabled = false;
+    calcularTotal();
+}
+
+function calcularTotal() {
+    const cantidad = parseFloat(document.getElementById('cantidad_pares').value) || 0;
+    const precio = parseFloat(document.getElementById('precio_unitario').value) || 0;
+    const descuento = parseFloat(document.getElementById('descuento').value) || 0;
+
+    const subtotal = cantidad * precio;
+    const total = subtotal - descuento;
+
+    document.getElementById('subtotal').textContent = 'S/ ' + subtotal.toFixed(2);
+    document.getElementById('descuento-texto').textContent = 'S/ ' + descuento.toFixed(2);
+    document.getElementById('total').textContent = 'S/ ' + total.toFixed(2);
+}
+
+document.getElementById('formVenta').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    if (!productoSeleccionado) {
+        alert('Debe seleccionar un producto');
+        return;
+    }
+
+    const idCliente = document.getElementById('id_cliente').value;
+    if (!idCliente) {
+        alert('Debe seleccionar un cliente');
+        return;
+    }
+
+    const cantidad = parseInt(document.getElementById('cantidad_pares').value);
+    if (cantidad > productoSeleccionado.cantidad_pares) {
+        alert(`Stock insuficiente. Disponible: ${productoSeleccionado.cantidad_pares} pares`);
+        return;
+    }
+
+    const formData = {
+        id_inventario: parseInt(document.getElementById('id_inventario').value),
+        id_producto: parseInt(document.getElementById('id_producto').value),
+        id_cliente: parseInt(idCliente),
+        cliente: document.getElementById('cliente_nombre').value,
+        cantidad_pares: cantidad,
+        pares_por_docena: parseInt(document.getElementById('pares_por_docena').value),
+        precio_unitario: parseFloat(document.getElementById('precio_unitario').value),
+        descuento: parseFloat(document.getElementById('descuento').value) || 0,
+        estado_pago: document.getElementById('estado_pago').value,
+        metodo_pago: document.getElementById('metodo_pago').value,
+        observaciones: document.getElementById('observaciones').value
+    };
+
+    fetch('/api/ventas/registrar-directa', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(`✓ Venta registrada exitosamente\nCódigo: ${data.codigo_venta}`);
+            window.location.href = '/ventas';
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => {
+        alert('Error al registrar venta: ' + error);
+    });
+});
+</script>
+
+{% endblock %}

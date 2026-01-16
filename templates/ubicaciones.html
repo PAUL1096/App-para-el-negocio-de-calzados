@@ -24,28 +24,40 @@
                 </h5>
             </div>
             <div class="card-body">
-                <p class="text-muted mb-3">{{ ubicacion.descripcion }}</p>
+                <p class="text-muted mb-3">{{ ubicacion.direccion or 'Sin dirección' }}</p>
 
                 <div class="row text-center mb-3">
-                    <div class="col-6">
-                        <div class="stat-label">Stock General</div>
-                        <div class="stat-value text-warning" style="font-size: 1.5rem;">
+                    <div class="col-4">
+                        <div class="text-muted small">Stock General</div>
+                        <div class="fw-bold text-success" style="font-size: 1.3rem;">
                             {{ ubicacion.stock_general }}
                         </div>
                     </div>
-                    <div class="col-6">
-                        <div class="stat-label">Pedidos</div>
-                        <div class="stat-value text-info" style="font-size: 1.5rem;">
+                    <div class="col-4">
+                        <div class="text-muted small">Pedidos</div>
+                        <div class="fw-bold text-info" style="font-size: 1.3rem;">
                             {{ ubicacion.stock_pedidos }}
+                        </div>
+                    </div>
+                    <div class="col-4">
+                        <div class="text-muted small">Total Pares</div>
+                        <div class="fw-bold text-primary" style="font-size: 1.3rem;">
+                            {{ ubicacion.stock_total }}
                         </div>
                     </div>
                 </div>
 
+                <div class="mb-3">
+                    <small class="text-muted">
+                        <i class="bi bi-box-seam"></i> {{ ubicacion.productos_diferentes }} producto(s) diferente(s)
+                    </small>
+                </div>
+
                 <div class="d-flex gap-2">
-                    <button class="btn btn-sm btn-outline-primary flex-fill">
+                    <a href="/inventario?ubicacion={{ ubicacion.nombre }}" class="btn btn-sm btn-outline-primary flex-fill">
                         <i class="bi bi-eye"></i> Ver Stock
-                    </button>
-                    <button class="btn btn-sm btn-outline-secondary">
+                    </a>
+                    <button class="btn btn-sm btn-outline-secondary" onclick="editarUbicacion({{ ubicacion.id_ubicacion }})">
                         <i class="bi bi-pencil"></i>
                     </button>
                 </div>
@@ -84,8 +96,8 @@
                         </select>
                     </div>
                     <div class="mb-3">
-                        <label class="form-label">Descripción</label>
-                        <textarea class="form-control" name="descripcion" rows="3"></textarea>
+                        <label class="form-label">Dirección</label>
+                        <textarea class="form-control" name="direccion" rows="3" placeholder="Ej: Calle Principal #123, Calzaplaza"></textarea>
                     </div>
                 </form>
             </div>
