@@ -1,6 +1,7 @@
 """
 Sistema de Gestión de Calzado v2.0
 Modelo correcto: Variantes Base → Productos Producidos → Inventario
+Compatible con PythonAnywhere
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
@@ -8,14 +9,22 @@ import sqlite3
 from datetime import datetime
 import os
 
-app = Flask(__name__)
-app.secret_key = os.urandom(24)
+# Importar configuracion
+from config import get_config
 
-DATABASE = 'calzado.db'
+app = Flask(__name__)
+
+# Cargar configuracion segun entorno (development/production)
+config = get_config()
+app.secret_key = config.SECRET_KEY
+app.debug = config.DEBUG
+
+# Ruta a la base de datos (absoluta para compatibilidad con PythonAnywhere)
+DATABASE = config.DATABASE
 
 def get_db():
     """Obtiene conexión a la base de datos"""
-    conn = sqlite3.connect(DATABASE, timeout=30.0)  # 30 segundos de timeout
+    conn = sqlite3.connect(DATABASE, timeout=config.SQLITE_TIMEOUT)
     conn.row_factory = sqlite3.Row
     conn.execute('PRAGMA journal_mode=WAL')  # Write-Ahead Logging para mejor concurrencia
     return conn
@@ -2071,10 +2080,12 @@ def registrar_pago():
 
 if __name__ == '__main__':
     print("\n" + "="*70)
-    print("🚀 Sistema de Gestión de Calzado v2.0")
+    print(" Sistema de Gestion de Calzado v2.0")
     print("="*70)
-    print("📦 Modelo: Variantes Base → Productos → Inventario")
-    print("🌐 Servidor: http://localhost:5000")
+    print(" Modelo: Variantes Base -> Productos -> Inventario")
+    print(f" Base de datos: {DATABASE}")
+    print(f" Modo: {'Desarrollo' if app.debug else 'Produccion'}")
+    print(" Servidor: http://localhost:5000")
     print("="*70 + "\n")
 
-    app.run(debug=True, host='0.0.0.0', port=5000)
+    app.run(debug=app.debug, host='0.0.0.0', port=5000)

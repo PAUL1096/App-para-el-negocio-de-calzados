@@ -1,19 +1,26 @@
 """
-Script para insertar datos iniciales mínimos necesarios para el funcionamiento del sistema
-Ejecutar DESPUÉS de limpiar_datos_prueba.py
+Script para insertar datos iniciales minimos necesarios para el funcionamiento del sistema
+Ejecutar DESPUES de limpiar_datos_prueba.py
+Compatible con PythonAnywhere
 """
 
 import sqlite3
+from config import get_config
+
+# Obtener ruta de base de datos desde configuracion
+config = get_config()
+DATABASE = config.DATABASE
 
 def insertar_datos_iniciales():
-    """Inserta datos mínimos necesarios para que el sistema funcione"""
+    """Inserta datos minimos necesarios para que el sistema funcione"""
 
     print("\n" + "="*70)
-    print("📝 INSERCIÓN DE DATOS INICIALES")
+    print(" INSERCION DE DATOS INICIALES")
     print("="*70 + "\n")
+    print(f"Base de datos: {DATABASE}\n")
 
     try:
-        conn = sqlite3.connect('calzado.db')
+        conn = sqlite3.connect(DATABASE)
         conn.row_factory = sqlite3.Row
         cursor = conn.cursor()
 
