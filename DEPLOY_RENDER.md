@@ -1,179 +1,220 @@
-# Guia de Despliegue en Render
+# Guia de Despliegue en Render con PostgreSQL
 
-Render es una plataforma moderna para desplegar aplicaciones web. El plan gratuito es suficiente para comenzar.
+Esta guia te ayudara a desplegar el Sistema de Gestion de Calzado en Render con base de datos PostgreSQL persistente.
 
-## Ventajas de Render
+## Ventajas de esta configuracion
 
-- Despliegue automatico desde GitHub
-- SSL gratuito (HTTPS)
-- Plan gratuito generoso
-- Instalacion de dependencias sin problemas
-- Facil de configurar
-
-## Limitaciones del Plan Gratuito
-
-- La app "duerme" despues de 15 min de inactividad
-- Tarda ~30 segundos en "despertar" con la primera visita
-- 750 horas gratis por mes (suficiente para 1 app 24/7)
+- **Datos persistentes**: PostgreSQL mantiene tus datos aunque la app se reinicie
+- **Despliegue automatico**: Cada `git push` actualiza la app
+- **SSL gratuito**: HTTPS incluido
+- **Plan gratuito generoso**: Suficiente para comenzar
 
 ---
 
-## Paso 1: Crear cuenta en Render
+## PASO 1: Crear cuenta en Render
 
 1. Ve a [render.com](https://render.com)
-2. Click en "Get Started for Free"
-3. **Recomendado**: Registrate con tu cuenta de GitHub (facilita el despliegue)
+2. Click en **"Get Started for Free"**
+3. **Recomendado**: Registrate con tu cuenta de GitHub
 
 ---
 
-## Paso 2: Conectar tu repositorio
+## PASO 2: Crear base de datos PostgreSQL
+
+**IMPORTANTE**: Primero creamos la base de datos, luego la aplicacion.
+
+1. En el Dashboard de Render, click en **"New +"**
+2. Selecciona **"PostgreSQL"**
+3. Configura:
+
+| Campo | Valor |
+|-------|-------|
+| **Name** | `calzado-db` |
+| **Database** | `calzado` |
+| **User** | (dejar por defecto) |
+| **Region** | `Oregon (US West)` |
+| **Plan** | `Free` |
+
+4. Click en **"Create Database"**
+5. **IMPORTANTE**: Espera a que el estado sea "Available" (puede tomar 1-2 minutos)
+6. Copia el valor de **"Internal Database URL"** (lo necesitaras despues)
+   - Se ve algo como: `postgres://user:password@host/calzado`
+
+---
+
+## PASO 3: Crear Web Service
 
 1. En el Dashboard, click en **"New +"** > **"Web Service"**
 2. Conecta tu cuenta de GitHub si no lo hiciste
 3. Busca y selecciona: `App-para-el-negocio-de-calzados`
 4. Click en **"Connect"**
 
----
-
-## Paso 3: Configurar el servicio
-
-Completa los campos:
+### Configuracion del servicio:
 
 | Campo | Valor |
 |-------|-------|
-| **Name** | `sistema-calzado` (o el nombre que prefieras) |
-| **Region** | `Oregon (US West)` |
+| **Name** | `sistema-calzado` |
+| **Region** | `Oregon (US West)` (misma que la BD) |
 | **Branch** | `main` |
 | **Runtime** | `Python 3` |
-| **Build Command** | `pip install -r requirements.txt && python datos_iniciales.py` |
+| **Build Command** | `pip install -r requirements.txt` |
 | **Start Command** | `gunicorn app_v2:app` |
 | **Plan** | `Free` |
 
 ---
 
-## Paso 4: Variables de entorno
+## PASO 4: Configurar Variables de Entorno
 
 En la seccion **"Environment Variables"**, agrega:
 
 | Key | Value |
 |-----|-------|
+| `DATABASE_URL` | (pega la Internal Database URL del paso 2) |
 | `FLASK_ENV` | `production` |
 | `PYTHON_VERSION` | `3.11.0` |
 
-**Opcional** (recomendado para seguridad):
+**Opcional pero recomendado**:
+
 | Key | Value |
 |-----|-------|
-| `SECRET_KEY` | Una clave aleatoria larga |
+| `SECRET_KEY` | (una clave aleatoria larga) |
 
-Para generar una clave segura, ejecuta en tu terminal:
+Para generar una clave segura:
 ```bash
 python3 -c "import secrets; print(secrets.token_hex(32))"
 ```
 
 ---
 
-## Paso 5: Crear el servicio
+## PASO 5: Crear el servicio
 
 1. Click en **"Create Web Service"**
 2. Espera mientras Render:
    - Clona tu repositorio
    - Instala dependencias (~2-3 minutos)
+   - Crea las tablas en PostgreSQL automaticamente
    - Inicia la aplicacion
 
 ---
 
-## Paso 6: Acceder a tu aplicacion
+## PASO 6: Verificar despliegue
 
-Una vez desplegado, tu app estara en:
-```
-https://sistema-calzado.onrender.com
-```
-(El nombre exacto depende del nombre que elegiste)
+1. Una vez que el estado sea "Live", tu app estara en:
+   ```
+   https://sistema-calzado.onrender.com
+   ```
 
----
+2. La primera vez puede tardar ~30 segundos en cargar
 
-## Despliegue Automatico
-
-Cada vez que hagas `git push` a la rama `main`, Render automaticamente:
-1. Detecta los cambios
-2. Reinstala dependencias si es necesario
-3. Reinicia la aplicacion
+3. Verifica que puedas:
+   - Ver el dashboard
+   - Crear una ubicacion
+   - Crear una variante base
 
 ---
 
 ## Solucion de Problemas
 
-### La app tarda en cargar
-Normal en plan gratuito. Despues de 15 min sin visitas, la app "duerme". La primera visita tarda ~30 seg en despertar.
+### Error: "relation does not exist"
+La base de datos no se inicializo correctamente.
+1. Ve a tu Web Service > **"Manual Deploy"** > **"Clear build cache & deploy"**
 
-### Error de build
-1. Ve a tu servicio en Render
-2. Click en **"Logs"**
-3. Revisa los errores en la seccion de Build
+### Error: "could not connect to server"
+La variable `DATABASE_URL` no esta configurada.
+1. Verifica que `DATABASE_URL` este en Environment Variables
+2. Usa la **Internal Database URL**, no la External
 
-### Error "No module named X"
-Verifica que el modulo este en `requirements.txt`
+### Error de timeout
+El plan gratuito "duerme" la app despues de 15 min.
+1. La primera visita tarda ~30 segundos
+2. Esto es normal en el plan gratuito
 
-### La base de datos se borra
-**IMPORTANTE**: En Render gratuito, el sistema de archivos es efimero. La base de datos SQLite se borrara en cada redeploy.
-
-**Soluciones**:
-1. **Para pruebas**: Esta bien, los datos se recrean con `datos_iniciales.py`
-2. **Para produccion real**: Usar una base de datos externa (PostgreSQL de Render, por ejemplo)
-
----
-
-## Upgrade a Base de Datos Persistente (Opcional)
-
-Para datos persistentes, considera:
-
-### Opcion A: PostgreSQL en Render (Recomendado)
-1. En Render, crea un nuevo **PostgreSQL** database
-2. Modifica el codigo para usar PostgreSQL en vez de SQLite
-3. Conecta usando la variable `DATABASE_URL`
-
-### Opcion B: SQLite en un servicio de almacenamiento
-- Usar servicios como Supabase, PlanetScale, o Railway
+### Ver logs
+1. Dashboard > Tu Web Service > **"Logs"**
+2. Busca errores en rojo
 
 ---
 
-## Comandos Utiles
+## Actualizaciones
 
-### Ver logs en tiempo real
-En el dashboard de Render > Tu servicio > **Logs**
+Cada vez que hagas cambios:
 
-### Reiniciar manualmente
-Dashboard > Tu servicio > **Manual Deploy** > **Deploy latest commit**
+```bash
+git add .
+git commit -m "descripcion del cambio"
+git push origin main
+```
 
-### Ver metricas
-Dashboard > Tu servicio > **Metrics** (CPU, memoria, requests)
+Render automaticamente:
+1. Detecta el push
+2. Reconstruye la app
+3. Reinicia con los cambios
 
----
-
-## Comparacion: Render vs PythonAnywhere
-
-| Caracteristica | Render Free | PythonAnywhere Free |
-|----------------|-------------|---------------------|
-| Despliegue | Automatico desde Git | Manual |
-| SSL (HTTPS) | Incluido | Incluido |
-| "Sleep" | 15 min inactividad | 3 meses sin login |
-| Build tiempo | Rapido | Lento (pandas) |
-| Base de datos | Efimera (SQLite) | Persistente |
-| Consola SSH | No | Si |
+**Tus datos en PostgreSQL se mantienen intactos.**
 
 ---
 
-## Estructura del Proyecto para Render
+## Arquitectura Final
 
 ```
-App-para-el-negocio-de-calzados/
-├── app_v2.py          # Aplicacion principal
-├── config.py          # Configuracion
-├── requirements.txt   # Dependencias (incluye gunicorn)
-├── render.yaml        # Configuracion de Render (opcional)
-├── datos_iniciales.py # Script de inicializacion
-└── templates/         # Plantillas HTML
+┌─────────────────────────────────────────────────────────┐
+│                      RENDER                              │
+│  ┌─────────────────┐      ┌─────────────────────────┐   │
+│  │   Web Service   │      │   PostgreSQL Database   │   │
+│  │  sistema-calzado│◄────►│      calzado-db         │   │
+│  │   (Flask app)   │      │   (datos persistentes)  │   │
+│  └─────────────────┘      └─────────────────────────┘   │
+│          ▲                                               │
+└──────────┼───────────────────────────────────────────────┘
+           │
+    ┌──────┴──────┐
+    │   Usuario   │
+    │  (Browser)  │
+    └─────────────┘
 ```
+
+---
+
+## Comparacion de Planes
+
+| Caracteristica | Free | Starter ($7/mes) |
+|----------------|------|------------------|
+| Web Service | 750 hrs/mes | Ilimitado |
+| PostgreSQL | 1 GB, 90 dias | 1 GB, sin limite |
+| Sleep | 15 min inactividad | Nunca duerme |
+| Custom Domain | Si | Si |
+| SSL | Si | Si |
+
+**Nota**: La BD PostgreSQL gratuita expira a los 90 dias. Render te avisara para que hagas backup o upgrades.
+
+---
+
+## Backup de datos
+
+### Exportar desde Render
+1. Dashboard > Tu PostgreSQL > **"Connect"**
+2. Usa la External Database URL con una herramienta como pgAdmin o DBeaver
+
+### Desde linea de comandos
+```bash
+pg_dump "tu_external_database_url" > backup.sql
+```
+
+---
+
+## Desarrollo Local con PostgreSQL de Render
+
+Si quieres desarrollar localmente conectado a la BD de Render:
+
+1. Copia la **External Database URL**
+2. Crea un archivo `.env`:
+   ```
+   DATABASE_URL=postgres://user:pass@host/calzado
+   FLASK_ENV=development
+   ```
+3. Instala python-dotenv y cargalo en tu app
+
+**Nota**: Para desarrollo local normal, la app usa SQLite automaticamente si no hay `DATABASE_URL`.
 
 ---
 
@@ -181,6 +222,7 @@ App-para-el-negocio-de-calzados/
 
 - Documentacion Render: https://render.com/docs
 - Estado del servicio: https://status.render.com
+- Documentacion PostgreSQL: https://www.postgresql.org/docs/
 
 ---
 

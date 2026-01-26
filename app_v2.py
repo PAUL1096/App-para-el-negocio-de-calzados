@@ -1,16 +1,16 @@
 """
-Sistema de Gestión de Calzado v2.0
-Modelo correcto: Variantes Base → Productos Producidos → Inventario
-Compatible con PythonAnywhere
+Sistema de Gestion de Calzado v2.0
+Modelo correcto: Variantes Base -> Productos Producidos -> Inventario
+Compatible con PythonAnywhere y Render (PostgreSQL)
 """
 
 from flask import Flask, render_template, request, jsonify, redirect, url_for, flash
-import sqlite3
 from datetime import datetime
 import os
 
-# Importar configuracion
+# Importar configuracion y modulo de base de datos
 from config import get_config
+from database import get_db, init_database, insert_initial_data, is_postgres
 
 app = Flask(__name__)
 
@@ -19,15 +19,13 @@ config = get_config()
 app.secret_key = config.SECRET_KEY
 app.debug = config.DEBUG
 
-# Ruta a la base de datos (absoluta para compatibilidad con PythonAnywhere)
-DATABASE = config.DATABASE
-
-def get_db():
-    """Obtiene conexión a la base de datos"""
-    conn = sqlite3.connect(DATABASE, timeout=config.SQLITE_TIMEOUT)
-    conn.row_factory = sqlite3.Row
-    conn.execute('PRAGMA journal_mode=WAL')  # Write-Ahead Logging para mejor concurrencia
-    return conn
+# Inicializar base de datos al arrancar (crea tablas si no existen)
+with app.app_context():
+    try:
+        init_database()
+        insert_initial_data()
+    except Exception as e:
+        print(f"Advertencia al inicializar BD: {e}")
 
 # ============================================================================
 # DASHBOARD
