@@ -6,9 +6,14 @@
         <h1><i class="bi bi-box"></i> Catálogo de Variantes Base</h1>
         <p class="text-muted">Modelos/Plantillas de calzado que produces</p>
     </div>
-    <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaVarianteBase">
-        <i class="bi bi-plus-circle"></i> Nueva Variante Base
-    </button>
+    <div class="btn-group">
+        <button class="btn btn-success" data-bs-toggle="modal" data-bs-target="#modalCargaMasiva">
+            <i class="bi bi-file-earmark-excel"></i> Carga Masiva
+        </button>
+        <button class="btn btn-primary" data-bs-toggle="modal" data-bs-target="#modalNuevaVarianteBase">
+            <i class="bi bi-plus-circle"></i> Nueva Variante
+        </button>
+    </div>
 </div>
 
 <!-- Tabla de variantes base -->
@@ -138,6 +143,56 @@
     </div>
 </div>
 
+<!-- Modal: Carga Masiva -->
+<div class="modal fade" id="modalCargaMasiva" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-file-earmark-excel"></i> Carga Masiva desde Excel</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i>
+                    <strong>Instrucciones:</strong>
+                    <ol class="mb-0 mt-2">
+                        <li>Descarga la plantilla Excel</li>
+                        <li>Completa los datos de tus variantes</li>
+                        <li>Sube el archivo completado</li>
+                    </ol>
+                </div>
+
+                <div class="mb-3">
+                    <a href="/api/variantes-base/plantilla-excel" class="btn btn-outline-success w-100">
+                        <i class="bi bi-download"></i> Descargar Plantilla Excel
+                    </a>
+                </div>
+
+                <hr>
+
+                <form id="formCargaMasiva" enctype="multipart/form-data">
+                    <div class="mb-3">
+                        <label class="form-label">Seleccionar archivo Excel</label>
+                        <input type="file" class="form-control" name="archivo" accept=".xlsx,.xls" required>
+                        <small class="text-muted">Formatos aceptados: .xlsx, .xls</small>
+                    </div>
+                </form>
+
+                <div id="resultadoCarga" class="d-none">
+                    <hr>
+                    <div id="resultadoContenido"></div>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cerrar</button>
+                <button type="button" class="btn btn-success" onclick="procesarCargaMasiva()">
+                    <i class="bi bi-upload"></i> Cargar Variantes
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
 <!-- Modal: Editar Variante Base -->
 <div class="modal fade" id="modalEditarVarianteBase" tabindex="-1">
     <div class="modal-dialog modal-lg">
@@ -261,6 +316,51 @@ function actualizarVarianteBase() {
         }
     })
     .catch(error => alert('Error: ' + error));
+}
+
+function procesarCargaMasiva() {
+    const form = document.getElementById('formCargaMasiva');
+    const formData = new FormData(form);
+    const resultadoDiv = document.getElementById('resultadoCarga');
+    const contenidoDiv = document.getElementById('resultadoContenido');
+
+    // Validar que se selecciono un archivo
+    const archivo = formData.get('archivo');
+    if (!archivo || archivo.size === 0) {
+        alert('Por favor selecciona un archivo Excel');
+        return;
+    }
+
+    // Mostrar cargando
+    resultadoDiv.classList.remove('d-none');
+    contenidoDiv.innerHTML = '<div class="text-center"><div class="spinner-border text-primary"></div><p>Procesando archivo...</p></div>';
+
+    fetch('/api/variantes-base/carga-masiva', {
+        method: 'POST',
+        body: formData
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            let html = `<div class="alert alert-success"><i class="bi bi-check-circle"></i> ${data.message}</div>`;
+
+            if (data.errores && data.errores.length > 0) {
+                html += `<div class="alert alert-warning"><strong>Advertencias:</strong><ul class="mb-0">`;
+                data.errores.forEach(error => {
+                    html += `<li>${error}</li>`;
+                });
+                html += `</ul></div>`;
+            }
+
+            html += `<button class="btn btn-primary w-100" onclick="location.reload()"><i class="bi bi-arrow-clockwise"></i> Actualizar pagina</button>`;
+            contenidoDiv.innerHTML = html;
+        } else {
+            contenidoDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error: ${data.error}</div>`;
+        }
+    })
+    .catch(error => {
+        contenidoDiv.innerHTML = `<div class="alert alert-danger"><i class="bi bi-x-circle"></i> Error de conexion: ${error}</div>`;
+    });
 }
 </script>
 {% endblock %}
