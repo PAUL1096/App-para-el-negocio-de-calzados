@@ -187,6 +187,26 @@ class PostgresCursorWrapper:
         # AUTOINCREMENT no existe en PostgreSQL (usa SERIAL)
         sql = re.sub(r'\bAUTOINCREMENT\b', '', sql, flags=re.IGNORECASE)
 
+        # GROUP_CONCAT(campo, separador) -> STRING_AGG(campo::text, separador)
+        # Ejemplo: GROUP_CONCAT(codigo, ', ') -> STRING_AGG(codigo::text, ', ')
+        sql = re.sub(
+            r"GROUP_CONCAT\s*\(\s*([^,]+)\s*,\s*(['\"][^'\"]+['\"])\s*\)",
+            r"STRING_AGG(\1::text, \2)",
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        # GROUP_CONCAT(campo) -> STRING_AGG(campo::text, ',')
+        sql = re.sub(
+            r"GROUP_CONCAT\s*\(\s*([^)]+)\s*\)",
+            r"STRING_AGG(\1::text, ',')",
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        # IFNULL -> COALESCE (PostgreSQL usa COALESCE)
+        sql = re.sub(r'\bIFNULL\b', 'COALESCE', sql, flags=re.IGNORECASE)
+
         # INTEGER PRIMARY KEY en PostgreSQL necesita ser SERIAL
         # (esto es para CREATE TABLE, manejado en init_postgres)
 
