@@ -232,6 +232,117 @@ def editar_variante_base(id_variante_base):
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
+
+@app.route('/api/variantes-base/carga-masiva', methods=['POST'])
+def carga_masiva_variantes():
+    """API para cargar variantes base desde archivo Excel"""
+    try:
+        if 'archivo' not in request.files:
+            return jsonify({'success': False, 'error': 'No se envio ningun archivo'}), 400
+
+        archivo = request.files['archivo']
+
+        if archivo.filename == '':
+            return jsonify({'success': False, 'error': 'No se selecciono ningun archivo'}), 400
+
+        if not archivo.filename.endswith(('.xlsx', '.xls')):
+            return jsonify({'success': False, 'error': 'El archivo debe ser Excel (.xlsx o .xls)'}), 400
+
+        # Leer Excel con pandas
+        import pandas as pd
+        df = pd.read_excel(archivo)
+
+        # Validar columnas requeridas
+        columnas_requeridas = ['codigo_interno', 'tipo_calzado']
+        columnas_faltantes = [col for col in columnas_requeridas if col not in df.columns]
+
+        if columnas_faltantes:
+            return jsonify({
+                'success': False,
+                'error': f'Columnas faltantes: {", ".join(columnas_faltantes)}. Columnas encontradas: {", ".join(df.columns.tolist())}'
+            }), 400
+
+        conn = get_db()
+        cursor = conn.cursor()
+
+        insertados = 0
+        errores = []
+
+        for index, row in df.iterrows():
+            try:
+                codigo = str(row['codigo_interno']).strip()
+                tipo = str(row['tipo_calzado']).strip()
+
+                if not codigo or not tipo or codigo == 'nan' or tipo == 'nan':
+                    errores.append(f"Fila {index + 2}: codigo_interno y tipo_calzado son requeridos")
+                    continue
+
+                cursor.execute('''
+                    INSERT INTO variantes_base
+                    (codigo_interno, tipo_calzado, tipo_horma, segmento, descripcion)
+                    VALUES (?, ?, ?, ?, ?)
+                ''', (
+                    codigo,
+                    tipo,
+                    str(row.get('tipo_horma', '')).strip() if pd.notna(row.get('tipo_horma')) else '',
+                    str(row.get('segmento', '')).strip() if pd.notna(row.get('segmento')) else '',
+                    str(row.get('descripcion', '')).strip() if pd.notna(row.get('descripcion')) else ''
+                ))
+                insertados += 1
+
+            except Exception as e:
+                error_msg = str(e)
+                if 'UNIQUE' in error_msg or 'unique' in error_msg:
+                    errores.append(f"Fila {index + 2}: El codigo '{codigo}' ya existe")
+                else:
+                    errores.append(f"Fila {index + 2}: {error_msg}")
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({
+            'success': True,
+            'message': f'Carga completada: {insertados} variantes creadas',
+            'insertados': insertados,
+            'errores': errores
+        })
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/variantes-base/plantilla-excel')
+def descargar_plantilla_variantes():
+    """Descarga plantilla Excel para carga masiva de variantes"""
+    import pandas as pd
+    from io import BytesIO
+    from flask import send_file
+
+    # Crear DataFrame con ejemplo
+    data = {
+        'codigo_interno': ['BOT-001', 'ZAP-002', 'SAN-003'],
+        'tipo_calzado': ['Botin', 'Zapato', 'Sandalia'],
+        'tipo_horma': ['Clasica', 'Sport', 'Casual'],
+        'segmento': ['Dama', 'Caballero', 'Dama'],
+        'descripcion': ['Botin de cuero para dama', 'Zapato deportivo', 'Sandalia casual']
+    }
+    df = pd.DataFrame(data)
+
+    # Crear archivo Excel en memoria
+    output = BytesIO()
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        df.to_excel(writer, index=False, sheet_name='Variantes')
+
+    output.seek(0)
+
+    return send_file(
+        output,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+        as_attachment=True,
+        download_name='plantilla_variantes.xlsx'
+    )
+
+
 # ============================================================================
 # MÓDULO: PRODUCCIÓN
 # ============================================================================
