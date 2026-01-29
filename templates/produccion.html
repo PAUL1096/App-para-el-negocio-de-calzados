@@ -124,21 +124,16 @@
                         <td><small>{{ producto.fecha_produccion }}</small></td>
                         <td>
                             <div class="btn-group btn-group-sm">
-                                <button class="btn btn-outline-info" onclick="verDetalle({{ producto.id_producto }})" title="Ver">
-                                    <i class="bi bi-eye"></i>
+                                <button class="btn btn-outline-primary" onclick="editarProducto({{ producto.id_producto }})" title="Editar">
+                                    <i class="bi bi-pencil"></i>
+                                </button>
+                                <button class="btn btn-outline-danger" onclick="eliminarProducto({{ producto.id_producto }})" title="Eliminar">
+                                    <i class="bi bi-trash"></i>
                                 </button>
                                 {% if producto.pendiente_ingresar > 0 %}
                                 <a href="/inventario/ingresar/{{ producto.id_producto }}" class="btn btn-outline-warning" title="Ingresar {{ producto.pendiente_ingresar }} pares pendientes">
                                     <i class="bi bi-box-arrow-in-down"></i> {{ producto.pendiente_ingresar }}
                                 </a>
-                                {% elif estado == 'agotado' %}
-                                <button class="btn btn-outline-danger" disabled title="Agotado - Producir nuevamente si necesitas más">
-                                    <i class="bi bi-x-circle"></i>
-                                </button>
-                                {% else %}
-                                <button class="btn btn-outline-success" disabled title="Completamente ingresado">
-                                    <i class="bi bi-check-circle"></i>
-                                </button>
                                 {% endif %}
                             </div>
                         </td>
@@ -150,6 +145,76 @@
     </div>
     <div class="card-footer text-muted">
         Mostrando: <strong id="contador-visible">{{ productos|length }}</strong> de <strong>{{ productos|length }}</strong> productos
+    </div>
+</div>
+
+<!-- Modal: Editar Producto -->
+<div class="modal fade" id="modalEditarProducto" tabindex="-1">
+    <div class="modal-dialog modal-lg">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title"><i class="bi bi-pencil"></i> Editar Producto Producido</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="formEditarProducto">
+                    <input type="hidden" id="edit_id_producto" name="id_producto">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label">Cuero *</label>
+                            <input type="text" class="form-control" id="edit_cuero" name="cuero" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Color Cuero *</label>
+                            <input type="text" class="form-control" id="edit_color_cuero" name="color_cuero" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Suela *</label>
+                            <input type="text" class="form-control" id="edit_suela" name="suela" required>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Forro</label>
+                            <input type="text" class="form-control" id="edit_forro" name="forro">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Material Plantilla</label>
+                            <input type="text" class="form-control" id="edit_material_plantilla" name="material_plantilla">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Serie de Tallas</label>
+                            <input type="text" class="form-control" id="edit_serie_tallas" name="serie_tallas">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Cantidad Total Pares *</label>
+                            <input type="number" class="form-control" id="edit_cantidad_total_pares" name="cantidad_total_pares" min="1" required>
+                            <small class="text-muted" id="edit_cantidad_info"></small>
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Costo Unitario (S/)</label>
+                            <input type="number" class="form-control" id="edit_costo_unitario" name="costo_unitario" step="0.01" min="0">
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label">Precio Sugerido (S/)</label>
+                            <input type="number" class="form-control" id="edit_precio_sugerido" name="precio_sugerido" step="0.01" min="0">
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label">Fecha Produccion</label>
+                            <input type="date" class="form-control" id="edit_fecha_produccion" name="fecha_produccion">
+                        </div>
+                        <div class="col-12">
+                            <label class="form-label">Observaciones</label>
+                            <textarea class="form-control" id="edit_observaciones" name="observaciones" rows="2"></textarea>
+                        </div>
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Cancelar</button>
+                <button type="button" class="btn btn-primary" onclick="guardarEdicionProducto()">
+                    <i class="bi bi-save"></i> Guardar Cambios
+                </button>
+            </div>
+        </div>
     </div>
 </div>
 
@@ -195,6 +260,88 @@ function filtrarEstado(estado) {
         'pendiente': 'Mostrando productos pendientes de ingresar a inventario'
     };
     document.getElementById('resultado-filtro').textContent = mensajes[estado];
+}
+
+function editarProducto(idProducto) {
+    fetch(`/api/productos/${idProducto}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                const p = data.producto;
+
+                document.getElementById('edit_id_producto').value = p.id_producto;
+                document.getElementById('edit_cuero').value = p.cuero || '';
+                document.getElementById('edit_color_cuero').value = p.color_cuero || '';
+                document.getElementById('edit_suela').value = p.suela || '';
+                document.getElementById('edit_forro').value = p.forro || '';
+                document.getElementById('edit_material_plantilla').value = p.material_plantilla || '';
+                document.getElementById('edit_serie_tallas').value = p.serie_tallas || '';
+                document.getElementById('edit_cantidad_total_pares').value = p.cantidad_total_pares;
+                document.getElementById('edit_cantidad_total_pares').min = p.cantidad_ingresada || 0;
+                document.getElementById('edit_costo_unitario').value = p.costo_unitario || 0;
+                document.getElementById('edit_precio_sugerido').value = p.precio_sugerido || 0;
+                document.getElementById('edit_fecha_produccion').value = p.fecha_produccion || '';
+                document.getElementById('edit_observaciones').value = p.observaciones || '';
+
+                // Mostrar info de cantidad ingresada
+                const cantIngresada = p.cantidad_ingresada || 0;
+                if (cantIngresada > 0) {
+                    document.getElementById('edit_cantidad_info').textContent =
+                        `Minimo: ${cantIngresada} (ya ingresados a inventario)`;
+                } else {
+                    document.getElementById('edit_cantidad_info').textContent = '';
+                }
+
+                const modal = new bootstrap.Modal(document.getElementById('modalEditarProducto'));
+                modal.show();
+            } else {
+                alert('Error al cargar producto: ' + data.error);
+            }
+        })
+        .catch(error => alert('Error: ' + error));
+}
+
+function guardarEdicionProducto() {
+    const form = document.getElementById('formEditarProducto');
+    const formData = new FormData(form);
+    const data = Object.fromEntries(formData);
+    const idProducto = data.id_producto;
+
+    fetch(`/api/productos/${idProducto}/editar`, {
+        method: 'PUT',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => alert('Error: ' + error));
+}
+
+function eliminarProducto(idProducto) {
+    if (!confirm('¿Estas seguro de eliminar este producto?\n\nSolo se puede eliminar si NO tiene:\n- Registros en inventario\n- Ventas asociadas')) {
+        return;
+    }
+
+    fetch(`/api/productos/${idProducto}/eliminar`, {
+        method: 'DELETE'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            location.reload();
+        } else {
+            alert('Error: ' + data.error);
+        }
+    })
+    .catch(error => alert('Error: ' + error));
 }
 </script>
 
