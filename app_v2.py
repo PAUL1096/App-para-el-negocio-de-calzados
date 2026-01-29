@@ -1022,7 +1022,7 @@ def confirmar_llegada_preparacion(id_preparacion):
 
 @app.route('/ventas')
 def ventas():
-    """Vista de todas las ventas v2 con múltiples productos"""
+    """Vista de todas las ventas v2 con multiples productos"""
     conn = get_db()
     cursor = conn.cursor()
 
@@ -1030,33 +1030,33 @@ def ventas():
     cursor.execute('''
         SELECT
             v.*,
-            COUNT(vd.id_detalle) as total_productos,
-            SUM(vd.cantidad_pares) as total_pares,
-            GROUP_CONCAT(vd.codigo_interno, ', ') as productos_codigos,
-            prep.dia_venta,
-            prep.fecha_preparacion
+            c.nombre as cliente_nombre,
+            c.apellido as cliente_apellido,
+            u.nombre as ubicacion_nombre,
+            COUNT(vd.id_detalle_venta) as total_productos,
+            COALESCE(SUM(vd.cantidad_pares), 0) as total_pares
         FROM ventas_v2 v
         LEFT JOIN ventas_detalle vd ON v.id_venta = vd.id_venta
-        LEFT JOIN preparaciones prep ON v.id_preparacion = prep.id_preparacion
-        GROUP BY v.id_venta
-        ORDER BY v.fecha_venta DESC, v.hora_venta DESC
+        LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
+        LEFT JOIN ubicaciones u ON v.id_ubicacion = u.id_ubicacion
+        GROUP BY v.id_venta, c.nombre, c.apellido, u.nombre
+        ORDER BY v.fecha_venta DESC, v.id_venta DESC
         LIMIT 100
     ''')
     ventas = cursor.fetchall()
 
-    # Obtener preparaciones con stock disponible para vender
+    # Obtener preparaciones pendientes
     cursor.execute('''
         SELECT
             p.*,
-            u.nombre as ubicacion_origen,
-            SUM(pd.cantidad_pares - pd.cantidad_vendida - pd.cantidad_devuelta) as pendiente_vender
+            u.nombre as ubicacion_destino,
+            COALESCE(SUM(pd.cantidad_pares), 0) as total_pares
         FROM preparaciones p
-        LEFT JOIN ubicaciones u ON p.id_ubicacion_origen = u.id_ubicacion
+        LEFT JOIN ubicaciones u ON p.id_ubicacion_destino = u.id_ubicacion
         LEFT JOIN preparaciones_detalle pd ON p.id_preparacion = pd.id_preparacion
-        WHERE p.estado IN ('pendiente', 'en_proceso')
-        GROUP BY p.id_preparacion
-        HAVING pendiente_vender > 0
-        ORDER BY p.fecha_preparacion DESC, p.dia_venta
+        WHERE p.estado = 'pendiente'
+        GROUP BY p.id_preparacion, u.nombre
+        ORDER BY p.fecha_preparacion DESC
     ''')
     preparaciones_disponibles = cursor.fetchall()
 
