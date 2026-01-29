@@ -444,6 +444,146 @@ def crear_producto():
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
 
+
+@app.route('/api/productos/<int:id_producto>', methods=['GET'])
+def obtener_producto(id_producto):
+    """API para obtener detalles de un producto producido"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        cursor.execute('''
+            SELECT p.*, vb.codigo_interno, vb.tipo_calzado
+            FROM productos_producidos p
+            JOIN variantes_base vb ON p.id_variante_base = vb.id_variante_base
+            WHERE p.id_producto = ?
+        ''', (id_producto,))
+        producto = cursor.fetchone()
+
+        conn.close()
+
+        if producto:
+            return jsonify({'success': True, 'producto': dict(producto)})
+        return jsonify({'success': False, 'error': 'Producto no encontrado'}), 404
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/productos/<int:id_producto>/editar', methods=['PUT'])
+def editar_producto(id_producto):
+    """API para editar un producto producido"""
+    try:
+        data = request.json
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Verificar que el producto existe
+        cursor.execute('SELECT * FROM productos_producidos WHERE id_producto = ?', (id_producto,))
+        producto = cursor.fetchone()
+
+        if not producto:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Producto no encontrado'}), 404
+
+        # Verificar que la nueva cantidad no sea menor a la ya ingresada
+        nueva_cantidad = int(data.get('cantidad_total_pares', producto['cantidad_total_pares']))
+        cantidad_ingresada = producto['cantidad_ingresada'] or 0
+
+        if nueva_cantidad < cantidad_ingresada:
+            conn.close()
+            return jsonify({
+                'success': False,
+                'error': f'La cantidad total ({nueva_cantidad}) no puede ser menor a la cantidad ya ingresada ({cantidad_ingresada})'
+            }), 400
+
+        # Actualizar el producto
+        cursor.execute('''
+            UPDATE productos_producidos SET
+                cuero = ?,
+                color_cuero = ?,
+                suela = ?,
+                forro = ?,
+                material_plantilla = ?,
+                serie_tallas = ?,
+                costo_unitario = ?,
+                precio_sugerido = ?,
+                fecha_produccion = ?,
+                cantidad_total_pares = ?,
+                observaciones = ?
+            WHERE id_producto = ?
+        ''', (
+            data.get('cuero', producto['cuero']),
+            data.get('color_cuero', producto['color_cuero']),
+            data.get('suela', producto['suela']),
+            data.get('forro', producto['forro']),
+            data.get('material_plantilla', producto['material_plantilla']),
+            data.get('serie_tallas', producto['serie_tallas']),
+            data.get('costo_unitario', producto['costo_unitario']),
+            data.get('precio_sugerido', producto['precio_sugerido']),
+            data.get('fecha_produccion', producto['fecha_produccion']),
+            nueva_cantidad,
+            data.get('observaciones', producto['observaciones']),
+            id_producto
+        ))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Producto actualizado exitosamente'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
+@app.route('/api/productos/<int:id_producto>/eliminar', methods=['DELETE'])
+def eliminar_producto(id_producto):
+    """API para eliminar un producto producido (solo si no tiene movimientos)"""
+    try:
+        conn = get_db()
+        cursor = conn.cursor()
+
+        # Verificar que el producto existe
+        cursor.execute('SELECT * FROM productos_producidos WHERE id_producto = ?', (id_producto,))
+        producto = cursor.fetchone()
+
+        if not producto:
+            conn.close()
+            return jsonify({'success': False, 'error': 'Producto no encontrado'}), 404
+
+        # Verificar que no tiene inventario
+        cursor.execute('SELECT COUNT(*) as total FROM inventario WHERE id_producto = ?', (id_producto,))
+        tiene_inventario = cursor.fetchone()['total'] > 0
+
+        if tiene_inventario:
+            conn.close()
+            return jsonify({
+                'success': False,
+                'error': 'No se puede eliminar: el producto ya tiene registros en inventario'
+            }), 400
+
+        # Verificar que no tiene ventas
+        cursor.execute('SELECT COUNT(*) as total FROM ventas_detalle WHERE id_producto = ?', (id_producto,))
+        tiene_ventas = cursor.fetchone()['total'] > 0
+
+        if tiene_ventas:
+            conn.close()
+            return jsonify({
+                'success': False,
+                'error': 'No se puede eliminar: el producto tiene ventas registradas'
+            }), 400
+
+        # Eliminar el producto
+        cursor.execute('DELETE FROM productos_producidos WHERE id_producto = ?', (id_producto,))
+
+        conn.commit()
+        conn.close()
+
+        return jsonify({'success': True, 'message': 'Producto eliminado exitosamente'})
+
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
+
+
 # ============================================================================
 # MÓDULO: INVENTARIO
 # ============================================================================
