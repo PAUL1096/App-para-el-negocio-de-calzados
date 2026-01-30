@@ -835,7 +835,7 @@ def trasladar_inventario():
 
 @app.route('/preparaciones')
 def preparaciones():
-    """Vista de preparaciones de mercadería"""
+    """Vista de preparaciones de mercaderia"""
     conn = get_db()
     cursor = conn.cursor()
 
@@ -843,15 +843,13 @@ def preparaciones():
     cursor.execute('''
         SELECT
             p.*,
-            u_origen.nombre as ubicacion_origen,
             u_destino.nombre as ubicacion_destino,
-            COUNT(DISTINCT pd.id_producto) as total_productos,
-            SUM(pd.cantidad_pares) as total_pares
+            COUNT(pd.id_detalle_prep) as total_items,
+            COALESCE(SUM(pd.cantidad_pares), 0) as total_pares
         FROM preparaciones p
-        LEFT JOIN ubicaciones u_origen ON p.id_ubicacion_origen = u_origen.id_ubicacion
         LEFT JOIN ubicaciones u_destino ON p.id_ubicacion_destino = u_destino.id_ubicacion
         LEFT JOIN preparaciones_detalle pd ON p.id_preparacion = pd.id_preparacion
-        GROUP BY p.id_preparacion
+        GROUP BY p.id_preparacion, u_destino.nombre
         ORDER BY p.fecha_preparacion DESC, p.id_preparacion DESC
     ''')
     preparaciones = cursor.fetchall()
