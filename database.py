@@ -246,6 +246,32 @@ class PostgresCursorWrapper:
             flags=re.IGNORECASE
         )
 
+        # CAST(JULIANDAY('now') - JULIANDAY(campo) AS INTEGER) -> (CURRENT_DATE - campo::date)
+        sql = re.sub(
+            r"CAST\s*\(\s*JULIANDAY\s*\(\s*'now'\s*\)\s*-\s*JULIANDAY\s*\(\s*(\w+(?:\.\w+)?)\s*\)\s*AS\s+INTEGER\s*\)",
+            r"(CURRENT_DATE - \1::date)",
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        # DATE('now', '+X days') o DATE('now', '+' || var || ' days') -> CURRENT_DATE + INTERVAL
+        # Patrón simple: DATE('now', '+30 days') -> CURRENT_DATE + INTERVAL '30 days'
+        sql = re.sub(
+            r"DATE\s*\(\s*'now'\s*,\s*'\+(\d+)\s+days?'\s*\)",
+            r"CURRENT_DATE + INTERVAL '\1 days'",
+            sql,
+            flags=re.IGNORECASE
+        )
+
+        # Patrón con variable: DATE('now', '+' || ? || ' days')
+        # Este es más complejo, lo manejamos convirtiendo a: CURRENT_DATE + (? * INTERVAL '1 day')
+        sql = re.sub(
+            r"DATE\s*\(\s*'now'\s*,\s*'\+'\s*\|\|\s*\?\s*\|\|\s*'\s*days?'\s*\)",
+            r"CURRENT_DATE + (? * INTERVAL '1 day')",
+            sql,
+            flags=re.IGNORECASE
+        )
+
         # INTEGER PRIMARY KEY en PostgreSQL necesita ser SERIAL
         # (esto es para CREATE TABLE, manejado en init_postgres)
 
@@ -409,6 +435,7 @@ def init_sqlite():
             id_inventario INTEGER,
             tipo_stock TEXT DEFAULT 'general',
             cantidad_pares INTEGER NOT NULL,
+            cantidad_vendida INTEGER DEFAULT 0,
             FOREIGN KEY (id_preparacion) REFERENCES preparaciones(id_preparacion),
             FOREIGN KEY (id_producto) REFERENCES productos_producidos(id_producto),
             FOREIGN KEY (id_inventario) REFERENCES inventario(id_inventario)
@@ -436,13 +463,16 @@ def init_sqlite():
             id_venta INTEGER PRIMARY KEY AUTOINCREMENT,
             codigo_venta TEXT UNIQUE,
             id_cliente INTEGER,
+            cliente TEXT,
             id_preparacion INTEGER,
             id_ubicacion INTEGER,
-            fecha_venta DATE,
+            fecha_venta DATE DEFAULT CURRENT_DATE,
             estado_pago TEXT DEFAULT 'pendiente',
             total_final REAL DEFAULT 0,
             descuento_total REAL DEFAULT 0,
+            descuento_global REAL DEFAULT 0,
             modalidad_pago TEXT DEFAULT 'contado',
+            metodo_pago TEXT DEFAULT 'efectivo',
             observaciones TEXT,
             fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
             FOREIGN KEY (id_cliente) REFERENCES clientes(id_cliente),
@@ -454,9 +484,16 @@ def init_sqlite():
             id_detalle_venta INTEGER PRIMARY KEY AUTOINCREMENT,
             id_venta INTEGER NOT NULL,
             id_producto INTEGER NOT NULL,
+            codigo_interno TEXT,
+            cuero TEXT,
+            color_cuero TEXT,
+            serie_tallas TEXT,
             cantidad_pares INTEGER NOT NULL,
+            cantidad_docenas REAL DEFAULT 0,
             precio_unitario REAL NOT NULL,
             descuento REAL DEFAULT 0,
+            descuento_linea REAL DEFAULT 0,
+            subtotal REAL DEFAULT 0,
             FOREIGN KEY (id_venta) REFERENCES ventas_v2(id_venta),
             FOREIGN KEY (id_producto) REFERENCES productos_producidos(id_producto)
         );
@@ -585,7 +622,8 @@ def init_postgres():
             id_producto INTEGER REFERENCES productos_producidos(id_producto),
             id_inventario INTEGER REFERENCES inventario(id_inventario),
             tipo_stock VARCHAR(50) DEFAULT 'general',
-            cantidad_pares INTEGER NOT NULL
+            cantidad_pares INTEGER NOT NULL,
+            cantidad_vendida INTEGER DEFAULT 0
         )
     ''')
 
@@ -614,13 +652,16 @@ def init_postgres():
             id_venta SERIAL PRIMARY KEY,
             codigo_venta VARCHAR(50) UNIQUE,
             id_cliente INTEGER REFERENCES clientes(id_cliente),
+            cliente VARCHAR(200),
             id_preparacion INTEGER REFERENCES preparaciones(id_preparacion),
             id_ubicacion INTEGER REFERENCES ubicaciones(id_ubicacion),
-            fecha_venta DATE,
+            fecha_venta DATE DEFAULT CURRENT_DATE,
             estado_pago VARCHAR(50) DEFAULT 'pendiente',
             total_final DECIMAL(10,2) DEFAULT 0,
             descuento_total DECIMAL(10,2) DEFAULT 0,
+            descuento_global DECIMAL(10,2) DEFAULT 0,
             modalidad_pago VARCHAR(50) DEFAULT 'contado',
+            metodo_pago VARCHAR(50) DEFAULT 'efectivo',
             observaciones TEXT,
             fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -631,9 +672,16 @@ def init_postgres():
             id_detalle_venta SERIAL PRIMARY KEY,
             id_venta INTEGER NOT NULL REFERENCES ventas_v2(id_venta),
             id_producto INTEGER NOT NULL REFERENCES productos_producidos(id_producto),
+            codigo_interno VARCHAR(100),
+            cuero VARCHAR(100),
+            color_cuero VARCHAR(100),
+            serie_tallas VARCHAR(100),
             cantidad_pares INTEGER NOT NULL,
+            cantidad_docenas DECIMAL(10,2) DEFAULT 0,
             precio_unitario DECIMAL(10,2) NOT NULL,
-            descuento DECIMAL(10,2) DEFAULT 0
+            descuento DECIMAL(10,2) DEFAULT 0,
+            descuento_linea DECIMAL(10,2) DEFAULT 0,
+            subtotal DECIMAL(10,2) DEFAULT 0
         )
     ''')
 
