@@ -355,7 +355,23 @@ def produccion():
 
     cursor.execute('''
         SELECT
-            p.*,
+            p.id_producto,
+            p.id_variante_base,
+            p.cuero,
+            p.color_cuero,
+            p.suela,
+            p.forro,
+            p.material_plantilla,
+            p.serie_tallas,
+            p.pares_por_docena,
+            p.costo_unitario,
+            p.precio_sugerido,
+            p.cantidad_total_pares,
+            p.cantidad_ingresada,
+            p.fecha_produccion,
+            p.observaciones,
+            p.activo,
+            p.fecha_creacion,
             v.codigo_interno,
             v.tipo_calzado,
             v.tipo_horma,
@@ -368,7 +384,11 @@ def produccion():
         FROM productos_producidos p
         JOIN variantes_base v ON p.id_variante_base = v.id_variante_base
         LEFT JOIN inventario i ON p.id_producto = i.id_producto
-        GROUP BY p.id_producto
+        GROUP BY p.id_producto, p.id_variante_base, p.cuero, p.color_cuero, p.suela, p.forro,
+                 p.material_plantilla, p.serie_tallas, p.pares_por_docena, p.costo_unitario,
+                 p.precio_sugerido, p.cantidad_total_pares, p.cantidad_ingresada, p.fecha_produccion,
+                 p.observaciones, p.activo, p.fecha_creacion,
+                 v.codigo_interno, v.tipo_calzado, v.tipo_horma, v.segmento
         ORDER BY p.fecha_produccion DESC, p.id_producto DESC
     ''')
     productos = cursor.fetchall()
@@ -842,14 +862,20 @@ def preparaciones():
     # Obtener todas las preparaciones
     cursor.execute('''
         SELECT
-            p.*,
+            p.id_preparacion,
+            p.fecha_preparacion,
+            p.estado,
+            p.id_ubicacion_destino,
+            p.observaciones,
+            p.fecha_creacion,
             u_destino.nombre as ubicacion_destino,
             COUNT(pd.id_detalle_prep) as total_items,
             COALESCE(SUM(pd.cantidad_pares), 0) as total_pares
         FROM preparaciones p
         LEFT JOIN ubicaciones u_destino ON p.id_ubicacion_destino = u_destino.id_ubicacion
         LEFT JOIN preparaciones_detalle pd ON p.id_preparacion = pd.id_preparacion
-        GROUP BY p.id_preparacion, u_destino.nombre
+        GROUP BY p.id_preparacion, p.fecha_preparacion, p.estado, p.id_ubicacion_destino,
+                 p.observaciones, p.fecha_creacion, u_destino.nombre
         ORDER BY p.fecha_preparacion DESC, p.id_preparacion DESC
     ''')
     preparaciones = cursor.fetchall()
@@ -1167,7 +1193,18 @@ def ventas():
     # Obtener ventas maestro con resumen de productos
     cursor.execute('''
         SELECT
-            v.*,
+            v.id_venta,
+            v.codigo_venta,
+            v.id_cliente,
+            v.id_preparacion,
+            v.id_ubicacion,
+            v.fecha_venta,
+            v.estado_pago,
+            v.total_final,
+            v.descuento_total,
+            v.modalidad_pago,
+            v.observaciones,
+            v.fecha_creacion,
             c.nombre as cliente_nombre,
             c.apellido as cliente_apellido,
             u.nombre as ubicacion_nombre,
@@ -1177,7 +1214,9 @@ def ventas():
         LEFT JOIN ventas_detalle vd ON v.id_venta = vd.id_venta
         LEFT JOIN clientes c ON v.id_cliente = c.id_cliente
         LEFT JOIN ubicaciones u ON v.id_ubicacion = u.id_ubicacion
-        GROUP BY v.id_venta, c.nombre, c.apellido, u.nombre
+        GROUP BY v.id_venta, v.codigo_venta, v.id_cliente, v.id_preparacion, v.id_ubicacion,
+                 v.fecha_venta, v.estado_pago, v.total_final, v.descuento_total, v.modalidad_pago,
+                 v.observaciones, v.fecha_creacion, c.nombre, c.apellido, u.nombre
         ORDER BY v.fecha_venta DESC, v.id_venta DESC
         LIMIT 100
     ''')
@@ -1186,14 +1225,20 @@ def ventas():
     # Obtener preparaciones pendientes
     cursor.execute('''
         SELECT
-            p.*,
+            p.id_preparacion,
+            p.fecha_preparacion,
+            p.estado,
+            p.id_ubicacion_destino,
+            p.observaciones,
+            p.fecha_creacion,
             u.nombre as ubicacion_destino,
             COALESCE(SUM(pd.cantidad_pares), 0) as total_pares
         FROM preparaciones p
         LEFT JOIN ubicaciones u ON p.id_ubicacion_destino = u.id_ubicacion
         LEFT JOIN preparaciones_detalle pd ON p.id_preparacion = pd.id_preparacion
         WHERE p.estado = 'pendiente'
-        GROUP BY p.id_preparacion, u.nombre
+        GROUP BY p.id_preparacion, p.fecha_preparacion, p.estado, p.id_ubicacion_destino,
+                 p.observaciones, p.fecha_creacion, u.nombre
         ORDER BY p.fecha_preparacion DESC
     ''')
     preparaciones_disponibles = cursor.fetchall()
@@ -1753,14 +1798,19 @@ def ubicaciones():
     # Obtener ubicaciones con stock agregado
     cursor.execute('''
         SELECT
-            u.*,
+            u.id_ubicacion,
+            u.nombre,
+            u.tipo,
+            u.direccion,
+            u.activo,
+            u.fecha_creacion,
             COALESCE(SUM(CASE WHEN i.tipo_stock = 'general' THEN i.cantidad_pares ELSE 0 END), 0) as stock_general,
             COALESCE(SUM(CASE WHEN i.tipo_stock = 'pedido' THEN i.cantidad_pares ELSE 0 END), 0) as stock_pedidos,
             COALESCE(SUM(i.cantidad_pares), 0) as stock_total,
             COUNT(DISTINCT i.id_producto) as productos_diferentes
         FROM ubicaciones u
         LEFT JOIN inventario i ON u.id_ubicacion = i.id_ubicacion
-        GROUP BY u.id_ubicacion
+        GROUP BY u.id_ubicacion, u.nombre, u.tipo, u.direccion, u.activo, u.fecha_creacion
         ORDER BY u.nombre
     ''')
     ubicaciones_list = cursor.fetchall()
@@ -1910,9 +1960,9 @@ def cuentas_por_cobrar():
             AND v.estado_pago IN ('pendiente', 'parcial')
             AND v.id_venta NOT IN (SELECT id_venta FROM cuentas_por_cobrar WHERE id_venta IS NOT NULL)
         WHERE c.saldo_pendiente > 0 OR v.estado_pago IN ('pendiente', 'parcial')
-        GROUP BY cl.id_cliente
-        HAVING deuda_total > 0
-        ORDER BY deuda_total DESC
+        GROUP BY cl.id_cliente, cl.nombre, cl.apellido, cl.nombre_comercial
+        HAVING (COALESCE(SUM(c.saldo_pendiente), 0) + COALESCE(SUM(v.total_final), 0)) > 0
+        ORDER BY (COALESCE(SUM(c.saldo_pendiente), 0) + COALESCE(SUM(v.total_final), 0)) DESC
         LIMIT 5
     ''')
     top_deudores = cursor.fetchall()
@@ -1939,13 +1989,29 @@ def clientes():
 
     cursor.execute('''
         SELECT
-            cl.*,
+            cl.id_cliente,
+            cl.codigo_cliente,
+            cl.nombre,
+            cl.apellido,
+            cl.nombre_comercial,
+            cl.tipo_documento,
+            cl.numero_documento,
+            cl.email,
+            cl.telefono,
+            cl.direccion,
+            cl.limite_credito,
+            cl.dias_credito,
+            cl.activo,
+            cl.observaciones,
+            cl.fecha_creacion,
             COALESCE(SUM(c.saldo_pendiente), 0) as deuda_total,
             COUNT(c.id_cuenta) as num_cuentas_pendientes
         FROM clientes cl
         LEFT JOIN cuentas_por_cobrar c ON cl.id_cliente = c.id_cliente AND c.saldo_pendiente > 0
-        GROUP BY cl.id_cliente
-        ORDER BY cl.fecha_registro DESC
+        GROUP BY cl.id_cliente, cl.codigo_cliente, cl.nombre, cl.apellido, cl.nombre_comercial,
+                 cl.tipo_documento, cl.numero_documento, cl.email, cl.telefono, cl.direccion,
+                 cl.limite_credito, cl.dias_credito, cl.activo, cl.observaciones, cl.fecha_creacion
+        ORDER BY cl.fecha_creacion DESC
     ''')
     clientes_list = cursor.fetchall()
 
@@ -2002,12 +2068,25 @@ def cliente_detalle(id_cliente):
     # Ventas del cliente
     cursor.execute('''
         SELECT
-            v.*,
-            COUNT(vd.id_detalle) as num_productos
+            v.id_venta,
+            v.codigo_venta,
+            v.id_cliente,
+            v.id_preparacion,
+            v.id_ubicacion,
+            v.fecha_venta,
+            v.estado_pago,
+            v.total_final,
+            v.descuento_total,
+            v.modalidad_pago,
+            v.observaciones,
+            v.fecha_creacion,
+            COUNT(vd.id_detalle_venta) as num_productos
         FROM ventas_v2 v
         LEFT JOIN ventas_detalle vd ON v.id_venta = vd.id_venta
         WHERE v.id_cliente = ?
-        GROUP BY v.id_venta
+        GROUP BY v.id_venta, v.codigo_venta, v.id_cliente, v.id_preparacion, v.id_ubicacion,
+                 v.fecha_venta, v.estado_pago, v.total_final, v.descuento_total, v.modalidad_pago,
+                 v.observaciones, v.fecha_creacion
         ORDER BY v.fecha_venta DESC
         LIMIT 20
     ''', (id_cliente,))

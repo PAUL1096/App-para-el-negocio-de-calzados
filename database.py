@@ -207,6 +207,42 @@ class PostgresCursorWrapper:
         # IFNULL -> COALESCE (PostgreSQL usa COALESCE)
         sql = re.sub(r'\bIFNULL\b', 'COALESCE', sql, flags=re.IGNORECASE)
 
+        # JULIANDAY('now') -> EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)/86400
+        # Para calcular diferencia de dias: JULIANDAY(a) - JULIANDAY(b) -> (a::date - b::date)
+        sql = re.sub(
+            r"JULIANDAY\s*\(\s*'now'\s*\)\s*-\s*JULIANDAY\s*\(\s*(\w+(?:\.\w+)?)\s*\)",
+            r"(CURRENT_DATE - \1::date)",
+            sql,
+            flags=re.IGNORECASE
+        )
+        sql = re.sub(
+            r"JULIANDAY\s*\(\s*(\w+(?:\.\w+)?)\s*\)\s*-\s*JULIANDAY\s*\(\s*'now'\s*\)",
+            r"(\1::date - CURRENT_DATE)",
+            sql,
+            flags=re.IGNORECASE
+        )
+        # CAST(JULIANDAY(a) - JULIANDAY(b) AS INTEGER) -> (a::date - b::date)
+        sql = re.sub(
+            r"CAST\s*\(\s*JULIANDAY\s*\(\s*(\w+(?:\.\w+)?)\s*\)\s*-\s*JULIANDAY\s*\(\s*'now'\s*\)\s*AS\s+INTEGER\s*\)",
+            r"(\1::date - CURRENT_DATE)",
+            sql,
+            flags=re.IGNORECASE
+        )
+        # JULIANDAY('now') solo -> EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)/86400
+        sql = re.sub(
+            r"JULIANDAY\s*\(\s*'now'\s*\)",
+            "EXTRACT(EPOCH FROM CURRENT_TIMESTAMP)/86400",
+            sql,
+            flags=re.IGNORECASE
+        )
+        # JULIANDAY(campo) -> EXTRACT(EPOCH FROM campo::timestamp)/86400
+        sql = re.sub(
+            r"JULIANDAY\s*\(\s*(\w+(?:\.\w+)?)\s*\)",
+            r"EXTRACT(EPOCH FROM \1::timestamp)/86400",
+            sql,
+            flags=re.IGNORECASE
+        )
+
         # INTEGER PRIMARY KEY en PostgreSQL necesita ser SERIAL
         # (esto es para CREATE TABLE, manejado en init_postgres)
 
