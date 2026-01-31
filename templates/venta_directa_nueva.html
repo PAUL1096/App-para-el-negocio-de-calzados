@@ -223,7 +223,7 @@ function mostrarInventario(items) {
                 <small class="text-muted">${item.serie_tallas}</small>
             </td>
             <td><strong class="text-success">${item.cantidad_pares}</strong> pares</td>
-            <td>S/ ${item.precio_sugerido.toFixed(2)}</td>
+            <td>S/ ${parseFloat(item.precio_sugerido).toFixed(2)}</td>
             <td>
                 <button class="btn btn-sm btn-primary" onclick='seleccionarProducto(${JSON.stringify(item)})'>
                     <i class="bi bi-check-circle"></i> Seleccionar

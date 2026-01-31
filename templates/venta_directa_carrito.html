@@ -243,7 +243,7 @@ function mostrarInventario(items) {
                     <small class="text-muted">${item.serie_tallas}</small>
                 </td>
                 <td><strong class="text-success">${item.cantidad_pares}</strong> pares</td>
-                <td>S/ ${item.precio_sugerido.toFixed(2)}</td>
+                <td>S/ ${parseFloat(item.precio_sugerido).toFixed(2)}</td>
                 <td>
                     <button class="btn btn-sm btn-success" onclick='agregarAlCarrito(${JSON.stringify(item)})'>
                         <i class="bi bi-cart-plus"></i> Agregar
@@ -355,7 +355,7 @@ function actualizarVistaCarrito() {
                     </div>
                 </div>
                 <div class="mt-2 text-end">
-                    <strong>Subtotal: S/ ${(prod.cantidad_pares * prod.precio_unitario).toFixed(2)}</strong>
+                    <strong>Subtotal: S/ ${(prod.cantidad_pares * parseFloat(prod.precio_unitario)).toFixed(2)}</strong>
                 </div>
             </div>
         </div>
