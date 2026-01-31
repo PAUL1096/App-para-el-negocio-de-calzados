@@ -390,20 +390,27 @@ def init_sqlite():
 
         CREATE TABLE IF NOT EXISTS preparaciones (
             id_preparacion INTEGER PRIMARY KEY AUTOINCREMENT,
+            codigo_preparacion TEXT,
+            id_ubicacion_origen INTEGER,
+            id_ubicacion_destino INTEGER,
+            dia_venta TEXT,
             fecha_preparacion DATE,
             estado TEXT DEFAULT 'pendiente',
-            id_ubicacion_destino INTEGER,
             observaciones TEXT,
             fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            FOREIGN KEY (id_ubicacion_origen) REFERENCES ubicaciones(id_ubicacion),
             FOREIGN KEY (id_ubicacion_destino) REFERENCES ubicaciones(id_ubicacion)
         );
 
         CREATE TABLE IF NOT EXISTS preparaciones_detalle (
             id_detalle_prep INTEGER PRIMARY KEY AUTOINCREMENT,
             id_preparacion INTEGER NOT NULL,
-            id_inventario INTEGER NOT NULL,
+            id_producto INTEGER,
+            id_inventario INTEGER,
+            tipo_stock TEXT DEFAULT 'general',
             cantidad_pares INTEGER NOT NULL,
             FOREIGN KEY (id_preparacion) REFERENCES preparaciones(id_preparacion),
+            FOREIGN KEY (id_producto) REFERENCES productos_producidos(id_producto),
             FOREIGN KEY (id_inventario) REFERENCES inventario(id_inventario)
         );
 
@@ -560,9 +567,12 @@ def init_postgres():
     cursor.execute('''
         CREATE TABLE IF NOT EXISTS preparaciones (
             id_preparacion SERIAL PRIMARY KEY,
+            codigo_preparacion VARCHAR(50),
+            id_ubicacion_origen INTEGER REFERENCES ubicaciones(id_ubicacion),
+            id_ubicacion_destino INTEGER REFERENCES ubicaciones(id_ubicacion),
+            dia_venta VARCHAR(50),
             fecha_preparacion DATE,
             estado VARCHAR(50) DEFAULT 'pendiente',
-            id_ubicacion_destino INTEGER REFERENCES ubicaciones(id_ubicacion),
             observaciones TEXT,
             fecha_creacion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
         )
@@ -572,7 +582,9 @@ def init_postgres():
         CREATE TABLE IF NOT EXISTS preparaciones_detalle (
             id_detalle_prep SERIAL PRIMARY KEY,
             id_preparacion INTEGER NOT NULL REFERENCES preparaciones(id_preparacion),
-            id_inventario INTEGER NOT NULL REFERENCES inventario(id_inventario),
+            id_producto INTEGER REFERENCES productos_producidos(id_producto),
+            id_inventario INTEGER REFERENCES inventario(id_inventario),
+            tipo_stock VARCHAR(50) DEFAULT 'general',
             cantidad_pares INTEGER NOT NULL
         )
     ''')
