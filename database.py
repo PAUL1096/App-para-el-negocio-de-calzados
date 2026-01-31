@@ -142,6 +142,9 @@ class PostgresCursorWrapper:
     def _convert_sql(self, sql):
         """Convierte funciones SQLite a PostgreSQL"""
 
+        # BEGIN IMMEDIATE -> BEGIN (PostgreSQL no soporta IMMEDIATE)
+        sql = re.sub(r'\bBEGIN\s+IMMEDIATE\b', 'BEGIN', sql, flags=re.IGNORECASE)
+
         # DATE("now") -> CURRENT_DATE
         sql = re.sub(r'DATE\s*\(\s*["\']now["\']\s*\)', 'CURRENT_DATE', sql, flags=re.IGNORECASE)
 
