@@ -210,9 +210,13 @@ function mostrarInventario(items) {
 
     totalItems.textContent = `${items.length} producto(s) disponible(s)`;
 
-    tabla.innerHTML = items.map(item => `
+    tabla.innerHTML = items.map(item => {
+        const badgeStock = item.tipo_stock === 'pedido'
+            ? '<span class="badge bg-warning text-dark">Pedido</span>'
+            : '<span class="badge bg-primary">General</span>';
+        return `
         <tr>
-            <td><strong>${item.codigo_interno}</strong></td>
+            <td><strong>${item.codigo_interno}</strong> ${badgeStock}</td>
             <td>
                 <small>${item.tipo_calzado}</small><br>
                 ${item.cuero} ${item.color_cuero}<br>
@@ -226,7 +230,7 @@ function mostrarInventario(items) {
                 </button>
             </td>
         </tr>
-    `).join('');
+    `}).join('');
 }
 
 function seleccionarProducto(item) {
@@ -239,8 +243,11 @@ function seleccionarProducto(item) {
     document.getElementById('stock-disponible').textContent = item.cantidad_pares;
     document.getElementById('cantidad_pares').max = item.cantidad_pares;
 
+    const badgeStock = item.tipo_stock === 'pedido'
+        ? '<span class="badge bg-warning text-dark">Pedido</span>'
+        : '<span class="badge bg-primary">General</span>';
     document.getElementById('producto-seleccionado').innerHTML = `
-        <strong>${item.codigo_interno}</strong> - ${item.cuero} ${item.color_cuero}<br>
+        <strong>${item.codigo_interno}</strong> ${badgeStock} - ${item.cuero} ${item.color_cuero}<br>
         <small>${item.serie_tallas}</small>
     `;
 
