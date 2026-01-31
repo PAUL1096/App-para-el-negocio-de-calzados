@@ -1542,8 +1542,8 @@ def inventario_por_ubicacion(id_ubicacion):
             JOIN productos_producidos p ON i.id_producto = p.id_producto
             JOIN variantes_base vb ON p.id_variante_base = vb.id_variante_base
             JOIN ubicaciones u ON i.id_ubicacion = u.id_ubicacion
-            WHERE i.id_ubicacion = ? AND i.cantidad_pares > 0 AND i.tipo_stock = 'general'
-            ORDER BY vb.codigo_interno, p.cuero, p.color_cuero
+            WHERE i.id_ubicacion = ? AND i.cantidad_pares > 0
+            ORDER BY i.tipo_stock DESC, vb.codigo_interno, p.cuero, p.color_cuero
         ''', (id_ubicacion,))
 
         inventario = cursor.fetchall()
@@ -1564,7 +1564,8 @@ def inventario_por_ubicacion(id_ubicacion):
                 'serie_tallas': row['serie_tallas'],
                 'cantidad_pares': row['cantidad_pares'],
                 'precio_sugerido': row['precio_sugerido'],
-                'pares_por_docena': row['pares_por_docena']
+                'pares_por_docena': row['pares_por_docena'],
+                'tipo_stock': row['tipo_stock']
             })
 
         return jsonify({'success': True, 'inventario': items})
@@ -1610,10 +1611,10 @@ def registrar_venta_directa():
             if 'id_inventario' not in prod:
                 raise Exception(f'Producto sin id_inventario: {prod.get("codigo_interno", "")}')
 
-            # Validar stock disponible en inventario
+            # Validar stock disponible en inventario (tanto general como pedido)
             cursor.execute('''
-                SELECT cantidad_pares FROM inventario
-                WHERE id_inventario = ? AND tipo_stock = 'general'
+                SELECT cantidad_pares, tipo_stock FROM inventario
+                WHERE id_inventario = ?
             ''', (prod['id_inventario'],))
 
             inventario = cursor.fetchone()

@@ -231,9 +231,12 @@ function mostrarInventario(items) {
     totalItems.textContent = `${items.length} producto(s) disponible(s)`;
 
     tabla.innerHTML = items.map(item => {
+        const badgeStock = item.tipo_stock === 'pedido'
+            ? '<span class="badge bg-warning text-dark">Pedido</span>'
+            : '<span class="badge bg-primary">General</span>';
         return `
             <tr>
-                <td><strong>${item.codigo_interno}</strong></td>
+                <td><strong>${item.codigo_interno}</strong> ${badgeStock}</td>
                 <td>
                     <small>${item.tipo_calzado}</small><br>
                     ${item.cuero} ${item.color_cuero}<br>
