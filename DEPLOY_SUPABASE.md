@@ -37,17 +37,40 @@ Supabase ofrece PostgreSQL gratuito con mejor estabilidad que Render PostgreSQL.
 
 ---
 
-## PASO 3: Obtener URL de conexion
+## PASO 3: Obtener URL de conexion (MUY IMPORTANTE)
+
+⚠️ **IMPORTANTE**: El plan gratuito de Supabase NO tiene IPv4 dedicado, por lo que DEBES usar el **Session Pooler**, NO la conexion directa.
 
 1. En tu proyecto, ve a **Settings** (icono engranaje)
 2. Click en **"Database"** en el menu lateral
 3. Busca la seccion **"Connection string"**
-4. Selecciona **"URI"**
-5. Copia la URL, se ve asi:
+4. **CRITICO**: Selecciona la pestaña **"Session pooler"** (NO "Direct connection")
+
+   ![Selecciona Session pooler](https://i.imgur.com/example.png)
+
+   | Tipo | Puerto | Plan Gratuito |
+   |------|--------|---------------|
+   | **Session pooler** ✅ | 6543 | FUNCIONA |
+   | Transaction pooler | 6543 | FUNCIONA |
+   | Direct connection ❌ | 5432 | NO FUNCIONA (requiere IPv4) |
+
+5. Selecciona **"URI"** como formato
+6. Copia la URL, debe verse asi (nota el puerto **6543** y **pooler** en el host):
    ```
-   postgresql://postgres.[tu-proyecto]:[password]@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+   postgresql://postgres.[tu-proyecto]:[YOUR-PASSWORD]@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
    ```
-6. **IMPORTANTE**: Reemplaza `[YOUR-PASSWORD]` con la contraseña que creaste
+
+7. **Reemplaza `[YOUR-PASSWORD]`** con la contraseña que creaste al hacer el proyecto
+
+   **Ejemplo**: Si tu contraseña es `MiClave123`, la URL final seria:
+   ```
+   postgresql://postgres.rsbgtvhicyrmezxiqtpb:MiClave123@aws-0-sa-east-1.pooler.supabase.com:6543/postgres
+   ```
+
+### Verificar que tienes la URL correcta:
+- ✅ El host debe contener **`pooler.supabase.com`**
+- ✅ El puerto debe ser **`6543`**
+- ❌ Si el host es `db.xxxxx.supabase.co` y puerto `5432`, es la URL INCORRECTA
 
 ---
 
@@ -146,9 +169,28 @@ Para un negocio de calzado pequeño/mediano, estos limites son **mas que suficie
 
 ## Solucion de problemas
 
+### Error: "Network is unreachable" en puerto 5432
+**Este es el error mas comun en el plan gratuito.**
+
+```
+connection to server at "db.xxxxx.supabase.co", port 5432 failed: Network is unreachable
+```
+
+**Causa**: Estas usando la URL de "Direct connection" pero el plan gratuito no tiene IPv4.
+
+**Solucion**:
+1. Ve a Supabase > Settings > Database
+2. En "Connection string", selecciona **"Session pooler"** (NO "Direct connection")
+3. Copia la nueva URL (debe tener puerto **6543** y host **pooler.supabase.com**)
+4. Actualiza DATABASE_URL en Render con esta nueva URL
+
 ### Error: "password authentication failed"
 - Verifica que la contraseña en la URL sea correcta
 - No debe tener caracteres especiales sin codificar
+- Si tu contraseña tiene `@`, `#`, `%`, etc., debes codificarla:
+  - `@` → `%40`
+  - `#` → `%23`
+  - `%` → `%25`
 
 ### Error: "connection refused"
 - Verifica que la URL sea la de "Connection string" > "URI"
